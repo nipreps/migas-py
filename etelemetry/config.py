@@ -24,7 +24,9 @@ def load(filename: File = CONFIG_FILENAME) -> bool:
     """Load existing configuration file, or create a new one."""
     config = json.loads(Path(filename).read_text())
     ETConfig.endpoint = config.get("endpoint")
-    ETConfig.user_id = config.get("user_id")
+    user_id = config.get("user_id")
+    if user_id:
+        ETConfig.user_id = uuid.UUID(user_id)
     ETConfig._is_setup = True
     return True
 
@@ -35,6 +37,7 @@ def save(filename: File = CONFIG_FILENAME) -> str:
         field: getattr(ETConfig, field) for field in ETConfig.__annotations__.keys()
     }
     # TODO: Make safe when multiprocessing
+    Path(filename).parent.mkdir(parents=True, exist_ok=True)
     Path(filename).write_text(json.dumps(config))
     return str(filename)
 
@@ -77,4 +80,4 @@ def _safe_uuid_factory() -> uuid.UUID:
     import socket
 
     name = f"{getpass.getuser()}@{os.getenv('HOSTNAME', socket.gethostname())}"
-    return uuid.uuid3(uuid.NAMESPACE_DNS, name)
+    return str(uuid.uuid3(uuid.NAMESPACE_DNS, name))

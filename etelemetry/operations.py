@@ -8,7 +8,7 @@ import os
 import typing
 from uuid import UUID
 
-from .config import ETConfig as config
+from .config import ETConfig as config, setup
 from .request import request
 
 
@@ -28,7 +28,7 @@ def telemetry_check(func: typing.Callable) -> typing.Callable:
                 "message": "eTelemetry is not enabled."
             }
         # otherwise, ensure config is set up
-        config.setup()
+        setup()
         return func(*args, **kwargs)
     return can_send
 
@@ -63,28 +63,28 @@ addProject: OperationTemplate = {
     'operation': 'mutation{addProject(p:{$})}',
     'args': {
         # required
-        'project': '"{project}"',  # TODO: Refactor server
-        'version': '"{project_version}"',
-        'language': '"{langugage}"',
-        'languageVersion': '"{language_version}"',
+        'project': '"{}"',
+        'projectVersion': '"{}"',
+        'language': '"{}"',
+        'languageVersion': '"{}"',
         # optional
-        'status': '{status}',
-        'user': '"{user_id}"',
-        'session': '"{session_id}"',
-        'container': '{container}',
-        'platform': '"{platform}"',
-        'arguments': '"{arguments}"',
+        'status': '{}',
+        'user': '"{}"',
+        'session': '"{}"',
+        'container': '{}',
+        'platform': '"{}"',
+        'arguments': '"{}"',
     },
 }
 
 @telemetry_check
 def add_project(
     project: str,
-    project_version: str,
+    projectVersion: str,
     language: str,
-    language_version: str,
-    user_id: UUID = None,
-    session_id: UUID = None,
+    languageVersion: str,
+    userId: UUID = None,
+    sessionId: UUID = None,
     container: str = None,
     platform: str = None,
     arguments: list = None,
@@ -100,7 +100,11 @@ def add_project(
     # - status (pending, success, fail)
     # - userID (uuid - we can generate this)
     # - sessionID (uuid - app will provide if they want)
-    ...
+    params = _introspec(add_project, locals())
+    query = _formulate_query(params, addProject)
+    print(query)
+    _, _, body = request(config.endpoint, query)
+    return body
 
 
 def _introspec(func: typing.Callable, func_locals: dict) -> dict:
@@ -116,6 +120,7 @@ def _introspec(func: typing.Callable, func_locals: dict) -> dict:
 
 def _formulate_query(params: dict, template: OperationTemplate) -> str:
     """Construct the graphql query."""
+    print(params, template['args'])
     qparams = {x: template['args'][x].format(params[x]) for x in template['args'] if x in params}
     query = template['operation'].replace(
         "$", ",".join([f'{x}:{y}' for x, y in qparams.items()])
