@@ -102,7 +102,6 @@ def add_project(
     # - sessionID (uuid - app will provide if they want)
     params = _introspec(add_project, locals())
     query = _formulate_query(params, addProject)
-    print(query)
     _, _, body = request(config.endpoint, query)
     return body
 
@@ -120,7 +119,6 @@ def _introspec(func: typing.Callable, func_locals: dict) -> dict:
 
 def _formulate_query(params: dict, template: OperationTemplate) -> str:
     """Construct the graphql query."""
-    print(params, template['args'])
     qparams = {x: template['args'][x].format(params[x]) for x in template['args'] if x in params}
     query = template['operation'].replace(
         "$", ",".join([f'{x}:{y}' for x, y in qparams.items()])
