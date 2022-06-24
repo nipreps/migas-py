@@ -8,7 +8,7 @@ import os
 import typing
 from uuid import UUID
 
-from .config import ETConfig as config, setup
+from .config import Config, setup
 from .request import request
 
 
@@ -34,7 +34,7 @@ def telemetry_check(func: typing.Callable) -> typing.Callable:
 
 
 fromDateRange: OperationTemplate = {
-    'operation': 'query{fromDateRange($)}',
+    'operation': 'query{from_date_range($)}',
     'args': {
         # required
         'project': '"{}"',
@@ -54,19 +54,19 @@ def from_date_range(
 ) -> dict:
     params = _introspec(from_date_range, locals())
     query = _formulate_query(params, fromDateRange)
-    _, _, body = request(config.endpoint, query)
+    status, response = request(Config.endpoint, query)
     # TODO: Verify return is as expected
-    return body
+    return response
 
 
 addProject: OperationTemplate = {
-    'operation': 'mutation{addProject(p:{$})}',
+    'operation': 'mutation{add_project(p:{$})}',
     'args': {
         # required
         'project': '"{}"',
-        'projectVersion': '"{}"',
+        'project_version': '"{}"',
         'language': '"{}"',
-        'languageVersion': '"{}"',
+        'language_version': '"{}"',
         # optional
         'status': '{}',
         'user': '"{}"',
@@ -80,9 +80,9 @@ addProject: OperationTemplate = {
 @telemetry_check
 def add_project(
     project: str,
-    projectVersion: str,
+    project_version: str,
     language: str,
-    languageVersion: str,
+    language_version: str,
     userId: UUID = None,
     sessionId: UUID = None,
     container: str = None,
@@ -102,9 +102,8 @@ def add_project(
     # - sessionID (uuid - app will provide if they want)
     params = _introspec(add_project, locals())
     query = _formulate_query(params, addProject)
-    print(query)
-    _, _, body = request(config.endpoint, query)
-    return body
+    status, response = request(Config.endpoint, query)
+    return status, response
 
 
 def _introspec(func: typing.Callable, func_locals: dict) -> dict:
@@ -120,7 +119,6 @@ def _introspec(func: typing.Callable, func_locals: dict) -> dict:
 
 def _formulate_query(params: dict, template: OperationTemplate) -> str:
     """Construct the graphql query."""
-    print(params, template['args'])
     qparams = {x: template['args'][x].format(params[x]) for x in template['args'] if x in params}
     query = template['operation'].replace(
         "$", ",".join([f'{x}:{y}' for x, y in qparams.items()])

@@ -2,15 +2,16 @@
 
 import json
 from http.client import HTTPConnection, HTTPSConnection, HTTPResponse
+import typing
 from urllib.parse import urlparse
 
 from . import __version__
 
 
-ETResponse = tuple[int, str, str]  # status code, content-type, body
+ETResponse = tuple[int, typing.Union[dict, str]]  # status code, body
 
 
-def request(url: str, query: str, *, timeout: int = 5, chunk_size: int = None) -> ETResponse:
+def request(url: str, query: str, *, timeout: int = 3, chunk_size: int = None) -> ETResponse:
     purl = urlparse(url)
     # TODO: 3.10 - Replace with match/case
     if purl.scheme == 'https':
@@ -34,11 +35,25 @@ def request(url: str, query: str, *, timeout: int = 5, chunk_size: int = None) -
         conn.request("POST", purl.path, body, headers)
         response = conn.getresponse()
         body = _read_response(response, chunk_size)
+    except TimeoutError:
+        return (
+            408, {"success": False, "errors": [{"message": "Connection to server timed out."}]}
+        )
+    except ConnectionError:
+        return (
+            503, {"success": False, "errors": [{"message": "Server is not available."}]}
+        )
     finally:
         conn.close()
 
-    # TODO: Check reponse headers for server integrity, content type
-    return response.status, response.headers.get('Content-Type'), body
+    if not response.headers.get("X-Backend-Server"):
+        # TODO: Implement logging
+        print("Etelemetry server is incorrectly configured.")
+
+    if response.headers.get("Content-Type").startswith("application/json"):
+        body = json.loads(body)
+
+    return response.status, body
 
 
 def _read_response(response: HTTPResponse, chunk_size: int = None) -> str:

@@ -14,7 +14,7 @@ File = typing.Union[str, Path]
 
 
 @dataclass
-class ETConfig:
+class Config:
     endpoint: str = None
     user_id: uuid.UUID = None
     _is_setup = False
@@ -23,18 +23,18 @@ class ETConfig:
 def load(filename: File = CONFIG_FILENAME) -> bool:
     """Load existing configuration file, or create a new one."""
     config = json.loads(Path(filename).read_text())
-    ETConfig.endpoint = config.get("endpoint")
+    Config.endpoint = config.get("endpoint")
     user_id = config.get("user_id")
     if user_id:
-        ETConfig.user_id = uuid.UUID(user_id)
-    ETConfig._is_setup = True
+        Config.user_id = uuid.UUID(user_id)
+    Config._is_setup = True
     return True
 
 
 def save(filename: File = CONFIG_FILENAME) -> str:
     """Save to a file."""
     config = {
-        field: getattr(ETConfig, field) for field in ETConfig.__annotations__.keys()
+        field: getattr(Config, field) for field in Config.__annotations__.keys()
     }
     # TODO: Make safe when multiprocessing
     Path(filename).parent.mkdir(parents=True, exist_ok=True)
@@ -44,13 +44,13 @@ def save(filename: File = CONFIG_FILENAME) -> str:
 
 def setup(et_endpoint: str = None, user_id: uuid.UUID = None, filename: File = CONFIG_FILENAME):
     """Configure the client, and save configuration to an output file."""
-    if ETConfig._is_setup:
+    if Config._is_setup:
         return
     if Path(filename).exists():
         return load(filename)
-    ETConfig.endpoint = et_endpoint or DEFAULT_ENDPOINT
-    ETConfig.user_id = user_id or gen_user_uuid()
-    ETConfig._is_setup = True
+    Config.endpoint = et_endpoint or DEFAULT_ENDPOINT
+    Config.user_id = user_id or gen_user_uuid()
+    Config._is_setup = True
     save(filename)
 
 
