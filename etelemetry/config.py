@@ -7,7 +7,7 @@ import uuid
 
 
 DEFAULT_ENDPOINT = "http://0.0.0.0:8000/graphql"  # localhost test
-CONFIG_FILENAME = Path.home() / '.cache' / 'etelemetry' / 'config.json'
+DEFAULT_CONFIG_FILE = Path.home() / '.cache' / 'etelemetry' / 'config.json'
 
 # TODO: 3.10 - Replace with | operator
 File = typing.Union[str, Path]
@@ -32,34 +32,52 @@ class Config:
     _is_setup = False
 
     @classmethod
-    def _setup(cls, *, endpoint: str = None, user_id: str = None, session_id: str = None) -> None:
+    def init(
+        cls,
+        *,
+        endpoint: str = None,
+        user_id: str = None,
+        session_id: str = None,
+        final: bool = True,
+    ) -> None:
         if cls._is_setup:
             return
-        if endpoint is not None or cls.endpoint is None:
-            cls.endpoint = endpoint or DEFAULT_ENDPOINT
+        if endpoint is not None:
+            cls.endpoint = endpoint
+        elif cls.endpoint is None:
+            cls.endpoint = DEFAULT_ENDPOINT
         if user_id is not None or cls.user_id is None:
             try:
                 uuid.UUID(user_id)
                 cls.user_id = user_id
             except Exception:
                 cls.user_id = gen_uuid()
-        if session_id is not None or cls.session_id is None:
+        # Do not set automatically, leave to developers
+        if session_id is not None:
             try:
                 uuid.UUID(session_id)
                 cls.session_id = session_id
             except Exception:
-                cls.session_id = gen_uuid()
-        cls._is_setup = True
+                pass
+        cls._is_setup = final
 
 
-def load(filename: File = CONFIG_FILENAME) -> bool:
+    @classmethod
+    def _reset(cls):
+        cls.endpoint = None
+        cls.user_id = None
+        cls.session_id = None
+        cls._is_setup = False
+
+
+def load(filename: File) -> bool:
     """Load existing configuration file, or create a new one."""
     config = json.loads(Path(filename).read_text())
-    Config._setup(**config)
+    Config.init(final=False, **config)
     return True
 
 
-def save(filename: File = CONFIG_FILENAME) -> str:
+def save(filename: File) -> str:
     """Save to a file."""
     config = {
         field: getattr(Config, field) for field in Config.__annotations__.keys()
@@ -76,7 +94,7 @@ def setup(
     user_id: str = None,
     session_id: str = None,
     save_config: bool = True,
-    filename: File = CONFIG_FILENAME,
+    filename: File = None,
 ) -> None:
     """
     Configure the client, and save configuration to an output file.
@@ -86,10 +104,11 @@ def setup(
     """
     if Config._is_setup:
         return
+    filename = filename or DEFAULT_CONFIG_FILE
     if Path(filename).exists():
         load(filename)
     # if any parameters have been set, override the current attribute
-    Config._setup(endpoint, user_id, session_id)
+    Config.init(endpoint=endpoint, user_id=user_id, session_id=session_id)
     if save_config:
         save(filename)
 
