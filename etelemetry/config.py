@@ -7,7 +7,7 @@ import uuid
 
 
 DEFAULT_ENDPOINT = "http://0.0.0.0:8000/graphql"  # localhost test
-CONFIG_FILENAME = Path.home() / '.cache' / 'etelemetry' / 'config.json'
+DEFAULT_CONFIG_FILE = Path.home() / '.cache' / 'etelemetry' / 'config.json'
 
 # TODO: 3.10 - Replace with | operator
 File = typing.Union[str, Path]
@@ -15,23 +15,69 @@ File = typing.Union[str, Path]
 
 @dataclass
 class Config:
+    """
+    Class to store client-side configuration, facilitating communication with the server.
+
+    The class stores the following components:
+    - `endpoint`:
+    The URL of the etelemetry server
+    - `user_id`:
+    A string representation of a UUID (RFC 4122) assigned to the user.
+    - `session_id`:
+    A string representation of a UUID assigned to the lifespan of the etelemetry invocation.
+    """
     endpoint: str = None
-    user_id: uuid.UUID = None
+    user_id: str = None
+    session_id: str = None
     _is_setup = False
 
+    @classmethod
+    def init(
+        cls,
+        *,
+        endpoint: str = None,
+        user_id: str = None,
+        session_id: str = None,
+        final: bool = True,
+    ) -> None:
+        if cls._is_setup:
+            return
+        if endpoint is not None:
+            cls.endpoint = endpoint
+        elif cls.endpoint is None:
+            cls.endpoint = DEFAULT_ENDPOINT
+        if user_id is not None or cls.user_id is None:
+            try:
+                uuid.UUID(user_id)
+                cls.user_id = user_id
+            except Exception:
+                cls.user_id = gen_uuid()
+        # Do not set automatically, leave to developers
+        if session_id is not None:
+            try:
+                uuid.UUID(session_id)
+                cls.session_id = session_id
+            except Exception:
+                pass
+        cls._is_setup = final
 
-def load(filename: File = CONFIG_FILENAME) -> bool:
+
+    @classmethod
+    def _reset(cls):
+        cls.endpoint = None
+        cls.user_id = None
+        cls.session_id = None
+        cls._is_setup = False
+
+
+def load(filename: File) -> bool:
     """Load existing configuration file, or create a new one."""
     config = json.loads(Path(filename).read_text())
-    Config.endpoint = config.get("endpoint")
-    user_id = config.get("user_id")
-    if user_id:
-        Config.user_id = uuid.UUID(user_id)
-    Config._is_setup = True
+    Config.init(final=False, **config)
     return True
 
 
-def save(filename: File = CONFIG_FILENAME) -> str:
+def save(filename: File) -> str:
     """Save to a file."""
     config = {
         field: getattr(Config, field) for field in Config.__annotations__.keys()
@@ -42,23 +88,36 @@ def save(filename: File = CONFIG_FILENAME) -> str:
     return str(filename)
 
 
-def setup(et_endpoint: str = None, user_id: uuid.UUID = None, filename: File = CONFIG_FILENAME):
-    """Configure the client, and save configuration to an output file."""
+def setup(
+    *,
+    endpoint: str = None,
+    user_id: str = None,
+    session_id: str = None,
+    save_config: bool = True,
+    filename: File = None,
+) -> None:
+    """
+    Configure the client, and save configuration to an output file.
+
+    This method is invoked before each API call, but can also be called by
+    application developers for finer-grain control.
+    """
     if Config._is_setup:
         return
+    filename = filename or DEFAULT_CONFIG_FILE
     if Path(filename).exists():
-        return load(filename)
-    Config.endpoint = et_endpoint or DEFAULT_ENDPOINT
-    Config.user_id = user_id or gen_user_uuid()
-    Config._is_setup = True
-    save(filename)
+        load(filename)
+    # if any parameters have been set, override the current attribute
+    Config.init(endpoint=endpoint, user_id=user_id, session_id=session_id)
+    if save_config:
+        save(filename)
 
 
-def gen_user_uuid(uuid_factory: str = "safe") -> uuid.UUID:
+def gen_uuid(uuid_factory: str = "safe") -> str:
     """
-    Generate a user ID in UUID format.
+    Generate a RFC 4122 UUID.
 
-    Depending on what `uuid_factory` is provided, the user ID will be generated differently:
+    Depending on what `uuid_factory` is provided, the UUID will be generated differently:
     - `safe`: This is multiprocessing safe, and uses system information.
     - `random`: This is random, and may run into problems if setup is called across multiple
     processes.
@@ -70,12 +129,12 @@ def gen_user_uuid(uuid_factory: str = "safe") -> uuid.UUID:
     # TODO: 3.10 - Replace with match/case
     if uuid_factory == "safe":
         return _safe_uuid_factory()
-    if uuid_factory == "random":
-        return uuid.uuid4()
+    elif uuid_factory == "random":
+        return str(uuid.uuid4())
     raise NotImplementedError
 
 
-def _safe_uuid_factory() -> uuid.UUID:
+def _safe_uuid_factory() -> str:
     import getpass
     import socket
 
