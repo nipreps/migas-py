@@ -13,7 +13,7 @@ from .config import Config, setup
 from .request import request
 
 
-if sys.version_info()[:2] < (3, 8):
+if sys.version_info[:2] < (3, 8):
     import typing_extensions as typing
 
 
