@@ -5,11 +5,16 @@ Each etelemetry
 """
 from functools import wraps
 import os
+import sys
 import typing
 from uuid import UUID
 
 from .config import Config, setup
 from .request import request
+
+
+if sys.version_info()[:2] < (3, 8):
+    import typing_extensions as typing
 
 
 class OperationTemplate(typing.TypedDict):
