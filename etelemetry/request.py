@@ -8,7 +8,7 @@ from urllib.parse import urlparse
 from . import __version__
 
 
-ETResponse = tuple[int, typing.Union[dict, str]]  # status code, body
+ETResponse = typing.Tuple[int, typing.Union[dict, str]]  # status code, body
 
 
 def request(url: str, query: str, *, timeout: int = 3, chunk_size: int = None) -> ETResponse:

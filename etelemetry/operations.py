@@ -5,6 +5,7 @@ Each etelemetry
 """
 from functools import wraps
 import os
+import sys
 import typing
 from uuid import UUID
 
@@ -12,7 +13,13 @@ from .config import Config, setup
 from .request import request
 
 
-class OperationTemplate(typing.TypedDict):
+if sys.version_info[:2] < (3, 8):
+    from typing_extensions import TypedDict
+else:
+    from typing import TypedDict
+
+
+class OperationTemplate(TypedDict):
     operation: str
     args: dict
 
