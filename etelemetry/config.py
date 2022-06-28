@@ -31,34 +31,31 @@ class Config:
     session_id: str = None
     _is_setup = False
 
-    def _setup(self, endpoint: str = None, user_id: str = None, session_id: str = None) -> None:
-        if self._is_setup:
+    @classmethod
+    def _setup(cls, *, endpoint: str = None, user_id: str = None, session_id: str = None) -> None:
+        if cls._is_setup:
             return
-        if endpoint is not None or self.endpoint is None:
-            self.endpoint = endpoint or DEFAULT_ENDPOINT
-        if user_id is not None or Config.user_id is None:
+        if endpoint is not None or cls.endpoint is None:
+            cls.endpoint = endpoint or DEFAULT_ENDPOINT
+        if user_id is not None or cls.user_id is None:
             try:
                 uuid.UUID(user_id)
-                Config.user_id = user_id
+                cls.user_id = user_id
             except Exception:
-                Config.user_id = gen_uuid()
-        if session_id is not None or Config.session_id is None:
+                cls.user_id = gen_uuid()
+        if session_id is not None or cls.session_id is None:
             try:
                 uuid.UUID(session_id)
-                Config.session_id = session_id
+                cls.session_id = session_id
             except Exception:
-                Config.user_id = gen_uuid()
-        self._is_setup = True
+                cls.session_id = gen_uuid()
+        cls._is_setup = True
 
 
 def load(filename: File = CONFIG_FILENAME) -> bool:
     """Load existing configuration file, or create a new one."""
     config = json.loads(Path(filename).read_text())
-    Config.endpoint = config.get("endpoint")
-    user_id = config.get("user_id")
-    if user_id:
-        Config.user_id = uuid.UUID(user_id)
-    Config._is_setup = True
+    Config._setup(**config)
     return True
 
 
@@ -76,8 +73,8 @@ def save(filename: File = CONFIG_FILENAME) -> str:
 def setup(
     *,
     endpoint: str = None,
-    user_id: uuid.UUID = None,
-    session_id: uuid.UUID = None,
+    user_id: str = None,
+    session_id: str = None,
     save_config: bool = True,
     filename: File = CONFIG_FILENAME,
 ) -> None:
