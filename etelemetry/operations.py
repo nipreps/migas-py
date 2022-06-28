@@ -14,10 +14,12 @@ from .request import request
 
 
 if sys.version_info[:2] < (3, 8):
-    import typing_extensions as typing
+    from typing_extensions import TypedDict
+else:
+    from typing import TypedDict
 
 
-class OperationTemplate(typing.TypedDict):
+class OperationTemplate(TypedDict):
     operation: str
     args: dict
 
