@@ -74,6 +74,11 @@ jobs:
       uses: actions/setup-python@v3
       with:
         python-version: ${{ matrix.python-version }}
+    - name: Fetch packages
+      uses: actions/download-artifact@v3
+      with:
+        name: dist
+        path: dist/
     - name: Select archive
       run: |
         if [ "$INSTALL_TYPE" = "sdist" ]; then
