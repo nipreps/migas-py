@@ -24,7 +24,7 @@ def request(url: str, query: str, *, timeout: int = 3, chunk_size: int = None) -
     body = json.dumps({"query": query}).encode("utf-8")
     conn = Connection(purl.netloc, timeout=timeout)
     headers = {
-        'User-Agent': f'etelemetry-client/{__version__}',
+        'User-Agent': f'migas-client/{__version__}',
         'Accept-Encoding': 'gzip, deflate, br',
         'Accept': '*/*',
         'Content-Length': len(body),
@@ -48,7 +48,7 @@ def request(url: str, query: str, *, timeout: int = 3, chunk_size: int = None) -
 
     if not response.headers.get("X-Backend-Server"):
         # TODO: Implement logging
-        print("Etelemetry server is incorrectly configured.")
+        print("migas server is incorrectly configured.")
 
     if response.headers.get("Content-Type").startswith("application/json"):
         body = json.loads(body)
