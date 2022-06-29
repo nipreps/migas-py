@@ -6,7 +6,7 @@ import typing
 import uuid
 
 
-DEFAULT_ENDPOINT = "http://0.0.0.0:8000/graphql"  # localhost test
+DEFAULT_ENDPOINT = 'https://migas.herokuapp.com/graphql'
 DEFAULT_CONFIG_FILE = Path.home() / '.cache' / 'migas' / 'config.json'
 
 # TODO: 3.10 - Replace with | operator
