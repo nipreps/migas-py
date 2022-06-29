@@ -63,29 +63,32 @@ class Config:
 
 
     @classmethod
+    def load(cls, filename: File) -> bool:
+        """Load existing configuration file, or create a new one."""
+        config = json.loads(Path(filename).read_text())
+        cls.init(final=False, **config)
+        return True
+
+
+    @classmethod
+    def save(cls, filename: File) -> str:
+        """Save to a JSON file."""
+        config = {
+            field: getattr(cls, field) for field in cls.__annotations__.keys()
+        }
+        # TODO: Make safe when multiprocessing
+        Path(filename).parent.mkdir(parents=True, exist_ok=True)
+        Path(filename).write_text(json.dumps(config))
+        return str(filename)
+
+
+    @classmethod
     def _reset(cls):
+        """Reset the config class attributes."""
         cls.endpoint = None
         cls.user_id = None
         cls.session_id = None
         cls._is_setup = False
-
-
-def load(filename: File) -> bool:
-    """Load existing configuration file, or create a new one."""
-    config = json.loads(Path(filename).read_text())
-    Config.init(final=False, **config)
-    return True
-
-
-def save(filename: File) -> str:
-    """Save to a file."""
-    config = {
-        field: getattr(Config, field) for field in Config.__annotations__.keys()
-    }
-    # TODO: Make safe when multiprocessing
-    Path(filename).parent.mkdir(parents=True, exist_ok=True)
-    Path(filename).write_text(json.dumps(config))
-    return str(filename)
 
 
 def setup(
@@ -106,11 +109,11 @@ def setup(
         return
     filename = filename or DEFAULT_CONFIG_FILE
     if Path(filename).exists():
-        load(filename)
+        Config.load(filename)
     # if any parameters have been set, override the current attribute
     Config.init(endpoint=endpoint, user_id=user_id, session_id=session_id)
     if save_config:
-        save(filename)
+        Config.save(filename)
 
 
 def gen_uuid(uuid_factory: str = "safe") -> str:
