@@ -1,15 +1,12 @@
 """
 Create queries and mutations to be sent to the graphql endpoint.
 """
-from functools import wraps
-import os
 import sys
 import typing
 from uuid import UUID
 
-from .config import Config, setup
-from .request import request
-
+from migas.config import Config, telemetry_enabled
+from migas.request import request
 
 if sys.version_info[:2] < (3, 8):
     from typing_extensions import TypedDict
@@ -20,28 +17,6 @@ else:
 class OperationTemplate(TypedDict):
     operation: str
     args: dict
-
-
-def telemetry_check(func: typing.Callable) -> typing.Callable:
-    """Decorator function to ensure telemetry collection is enabled."""
-
-    @wraps(func)
-    def can_send(*args, **kwargs):
-        if not os.getenv("ENABLE_MIGAS", "0").lower() in ("1", "true", "y", "yes"):
-            # do not communicate with server
-            return {
-                "success": False,
-                "errors": [
-                    {
-                        "message": "migas is not enabled - set `ENABLE_MIGAS` environment variable."
-                    }
-                ],
-            }
-        # otherwise, ensure config is set up
-        setup()
-        return func(*args, **kwargs)
-
-    return can_send
 
 
 fromDateRange: OperationTemplate = {
@@ -57,7 +32,7 @@ fromDateRange: OperationTemplate = {
 }
 
 
-@telemetry_check
+@telemetry_enabled
 def from_date_range(
     project: str,
     start: str,
@@ -90,7 +65,7 @@ addProject: OperationTemplate = {
 }
 
 
-@telemetry_check
+@telemetry_enabled
 def add_project(
     project: str,
     project_version: str,
