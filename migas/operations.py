@@ -27,13 +27,13 @@ def telemetry_check(func: typing.Callable) -> typing.Callable:
 
     @wraps(func)
     def can_send(*args, **kwargs):
-        if not os.getenv("ENABLE_ET", "0").lower() in ("1", "true", "y", "yes"):
+        if not os.getenv("ENABLE_MIGAS", "0").lower() in ("1", "true", "y", "yes"):
             # do not communicate with server
             return {
                 "success": False,
                 "errors": [
                     {
-                        "message": "migas is not enabled - set `ENABLE_ET` environment variable."
+                        "message": "migas is not enabled - set `ENABLE_MIGAS` environment variable."
                     }
                 ],
             }
