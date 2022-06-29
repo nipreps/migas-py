@@ -7,7 +7,7 @@ import uuid
 
 
 DEFAULT_ENDPOINT = "http://0.0.0.0:8000/graphql"  # localhost test
-DEFAULT_CONFIG_FILE = Path.home() / '.cache' / 'etelemetry' / 'config.json'
+DEFAULT_CONFIG_FILE = Path.home() / '.cache' / 'migas' / 'config.json'
 
 # TODO: 3.10 - Replace with | operator
 File = typing.Union[str, Path]
@@ -20,11 +20,11 @@ class Config:
 
     The class stores the following components:
     - `endpoint`:
-    The URL of the etelemetry server
+    The URL of the migas server
     - `user_id`:
     A string representation of a UUID (RFC 4122) assigned to the user.
     - `session_id`:
-    A string representation of a UUID assigned to the lifespan of the etelemetry invocation.
+    A string representation of a UUID assigned to the lifespan of the migas invocation.
     """
     endpoint: str = None
     user_id: str = None

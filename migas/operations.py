@@ -1,7 +1,5 @@
 """
 Create queries and mutations to be sent to the graphql endpoint.
-
-Each etelemetry
 """
 from functools import wraps
 import os
@@ -35,7 +33,7 @@ def telemetry_check(func: typing.Callable) -> typing.Callable:
                 "success": False,
                 "errors": [
                     {
-                        "message": "eTelemetry is not enabled - set `ENABLE_ET` environment variable."
+                        "message": "migas is not enabled - set `ENABLE_ET` environment variable."
                     }
                 ],
             }

@@ -1,2 +1,2 @@
 include versioneer.py
-include etelemetry/_version.py
+include migas/_version.py

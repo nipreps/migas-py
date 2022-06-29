@@ -32,7 +32,7 @@ jobs:
       run: |
         python --version
         python -m pip install -U build twine
-    - name: Build etelemetry
+    - name: Build migas
       run: python -m build
     - name: Check distributions
       run: twine check dist/*
@@ -92,4 +92,4 @@ jobs:
     - name: Install package and test dependencies
       run: python -m pip install $PIP_FLAGS $ARCHIVE[test]
     - name: Run tests
-      run: python -m pytest -sv --doctest-modules etelemetry
+      run: python -m pytest -sv --doctest-modules migas
