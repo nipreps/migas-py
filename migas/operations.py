@@ -7,6 +7,7 @@ from uuid import UUID
 
 from migas.config import Config, telemetry_enabled
 from migas.request import request
+from migas.utils import compile_info
 
 if sys.version_info[:2] < (3, 8):
     from typing_extensions import TypedDict
@@ -69,15 +70,17 @@ addProject: OperationTemplate = {
 def add_project(
     project: str,
     project_version: str,
-    language: str,
-    language_version: str,
-    userId: UUID = None,
-    sessionId: UUID = None,
+    language: str = None,
+    language_version: str = None,
+    user_id: UUID = None,
+    session_id: UUID = None,
     container: str = None,
     platform: str = None,
     arguments: list = None,
 ) -> dict:
-    params = _introspec(add_project, locals())
+    parameters = _introspec(add_project, locals())
+    # TODO: 3.9 - Replace with | operator
+    params = {**compile_info(), **parameters}
     query = _formulate_query(params, addProject)
     status, response = request(Config.endpoint, query)
     return status, response
