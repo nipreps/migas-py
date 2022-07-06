@@ -1,12 +1,11 @@
 """Stripped down, minimal import way to communicate with server"""
 
 import json
-from http.client import HTTPConnection, HTTPSConnection, HTTPResponse
 import typing
+from http.client import HTTPConnection, HTTPResponse, HTTPSConnection
 from urllib.parse import urlparse
 
 from . import __version__
-
 
 ETResponse = typing.Tuple[int, typing.Union[dict, str]]  # status code, body
 
@@ -36,13 +35,9 @@ def request(url: str, query: str, *, timeout: int = 3, chunk_size: int = None) -
         response = conn.getresponse()
         body = _read_response(response, chunk_size)
     except TimeoutError:
-        return (
-            408, {"success": False, "errors": [{"message": "Connection to server timed out."}]}
-        )
+        return (408, {"data": None, "errors": [{"message": "Connection to server timed out."}]})
     except ConnectionError:
-        return (
-            503, {"success": False, "errors": [{"message": "Server is not available."}]}
-        )
+        return (503, {"data": None, "errors": [{"message": "Server is not available."}]})
     finally:
         conn.close()
 
@@ -57,7 +52,11 @@ def request(url: str, query: str, *, timeout: int = 3, chunk_size: int = None) -
 
 
 def _read_response(response: HTTPResponse, chunk_size: int = None) -> str:
-    """Read and aggregate the response body"""
+    """
+    Read and aggregate the response body.
+
+    If `chunk_size` is `None`, the entire response is read at once.
+    """
     stream = b''
     # TODO: 3.8 - Replace with walrus
     # while chunk := response.read(chunk_size):
