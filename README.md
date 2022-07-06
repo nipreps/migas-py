@@ -12,10 +12,10 @@ Send a breadcrumb with usage information to the server.
 The server will attempt to return information about the project,
 such as the latest version and bad versions.
 
-### migas.from_date_range()
+### migas.get_usage()
 
-Check number of uses a project has received from a start date, and optionally an end date.
-If no end date is specified, the datetime is used.
+Check number of uses a `project` has received from a start date, and optionally an end date.
+If no end date is specified, the current datetime is used.
 
 ## Customization
 
