@@ -26,9 +26,9 @@ def test_setup_default():
     assert conf.session_id is None
     assert conf._is_setup is True
 
-    # after being set up, can be changed by forcing
+    # after being set up, will not be changed unless forcing
     new_endpoint = 'https://github.com'
-    config.setup(force=False, endpoint=new_endpoint)
+    config.setup(endpoint=new_endpoint)
     assert conf.endpoint == config.DEFAULT_ENDPOINT
     config.setup(force=True, endpoint=new_endpoint)
     assert conf.endpoint == new_endpoint
@@ -39,7 +39,8 @@ def test_setup_default():
     config_dict['session_id'] = nuid
     config.DEFAULT_CONFIG_FILE.write_text(json.dumps(config_dict))
     assert conf.session_id is None
-    conf.load(config.DEFAULT_CONFIG_FILE)
+    # again, forcing is required to overwrite
+    conf.load(config.DEFAULT_CONFIG_FILE, force=True)
     assert conf.session_id == nuid
 
     # can be reset altogether

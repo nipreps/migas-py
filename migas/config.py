@@ -74,7 +74,7 @@ class Config:
         endpoint: str = None,
         user_id: str = None,
         session_id: str = None,
-        force: bool = True,
+        force: bool = False,
         complete_init: bool = True,
     ) -> None:
         """
@@ -105,10 +105,10 @@ class Config:
 
     @classmethod
     @suppress_errors
-    def load(cls, filename: File) -> bool:
+    def load(cls, filename: File, force: bool = False) -> bool:
         """Load existing configuration file, or create a new one."""
         config = json.loads(Path(filename).read_text())
-        cls.init(complete_init=False, **config)
+        cls.init(complete_init=False, force=force, **config)
         return True
 
     @classmethod
@@ -137,8 +137,8 @@ def setup(
     session_id: str = None,
     save_config: bool = True,
     filename: File = None,
-    force: bool = True,
-) -> None:
+    force: bool = False,
+) -> bool:
     """
     Configure the client, and save configuration to an output file.
 
@@ -146,14 +146,15 @@ def setup(
     application developers for finer-grain control.
     """
     if not force and Config._is_setup:
-        return
+        return False
     filename = filename or DEFAULT_CONFIG_FILE
     if Path(filename).exists():
-        Config.load(filename)
+        Config.load(filename, force=force)
     # if any parameters have been set, override the current attribute
     Config.init(endpoint=endpoint, user_id=user_id, session_id=session_id, force=force)
     if save_config:
         Config.save(filename)
+    return True
 
 
 def gen_uuid(uuid_factory: str = "safe") -> str:
