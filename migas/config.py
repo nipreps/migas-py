@@ -40,7 +40,7 @@ def telemetry_enabled(func: typing.Callable) -> typing.Callable:
                 ],
             }
         # otherwise, ensure config is set up
-        setup()
+        setup(force=False)
         return func(*args, **kwargs)
 
     return can_send
@@ -74,14 +74,15 @@ class Config:
         endpoint: str = None,
         user_id: str = None,
         session_id: str = None,
-        final: bool = True,
+        force: bool = True,
+        complete_init: bool = True,
     ) -> None:
         """
         Setup migas configuration.
 
         If class was already configured, existing configuration is used.
         """
-        if cls._is_setup:
+        if not force and cls._is_setup:
             return
         if endpoint is not None:
             cls.endpoint = endpoint
@@ -100,14 +101,14 @@ class Config:
                 cls.session_id = session_id
             except Exception:
                 pass
-        cls._is_setup = final
+        cls._is_setup = complete_init
 
     @classmethod
     @suppress_errors
     def load(cls, filename: File) -> bool:
         """Load existing configuration file, or create a new one."""
         config = json.loads(Path(filename).read_text())
-        cls.init(final=False, **config)
+        cls.init(complete_init=False, **config)
         return True
 
     @classmethod
@@ -136,6 +137,7 @@ def setup(
     session_id: str = None,
     save_config: bool = True,
     filename: File = None,
+    force: bool = True,
 ) -> None:
     """
     Configure the client, and save configuration to an output file.
@@ -143,13 +145,13 @@ def setup(
     This method is invoked before each API call, but can also be called by
     application developers for finer-grain control.
     """
-    if Config._is_setup:
+    if not force and Config._is_setup:
         return
     filename = filename or DEFAULT_CONFIG_FILE
     if Path(filename).exists():
         Config.load(filename)
     # if any parameters have been set, override the current attribute
-    Config.init(endpoint=endpoint, user_id=user_id, session_id=session_id)
+    Config.init(endpoint=endpoint, user_id=user_id, session_id=session_id, force=force)
     if save_config:
         Config.save(filename)
 
