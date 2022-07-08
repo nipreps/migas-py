@@ -3,6 +3,7 @@ Create queries and mutations to be sent to the graphql endpoint.
 """
 import sys
 import typing
+from http.client import HTTPResponse
 from uuid import UUID
 
 from migas.config import Config, telemetry_enabled
@@ -22,6 +23,7 @@ DEFAULT_ERROR = '[migas-py] An error occurred.'
 class OperationTemplate(TypedDict):
     operation: str
     args: dict
+    response: dict
 
 
 getUsage: OperationTemplate = {
@@ -33,6 +35,11 @@ getUsage: OperationTemplate = {
         # optional
         "end": '"{}"',
         "unique": "{}",
+    },
+    "response": {
+        'success': False,
+        'hits': 0,
+        'message': DEFAULT_ERROR,
     },
 }
 
@@ -54,14 +61,7 @@ def get_usage(
     params = _introspec(get_usage, locals())
     query = _formulate_query(params, getUsage)
     _, response = request(Config.endpoint, query)
-
-    res = response.get("data", {}).get("get_usage")
-    if res is None:
-        try:
-            error = response.get('errors', [DEFAULT_ERROR])[0]
-        except Exception:
-            error = DEFAULT_ERROR
-        res = {'success': False, 'hits': 0, 'message': error}
+    res = _filter_response(response, 'get_usage', getUsage["response"])
     return res
 
 
@@ -80,6 +80,11 @@ addProject: OperationTemplate = {
         "container": "{}",
         "platform": '"{}"',
         "arguments": '"{}"',
+    },
+    "response": {
+        'success': False,
+        'message': DEFAULT_ERROR,
+        'latest_version': None,
     },
 }
 
@@ -101,14 +106,7 @@ def add_project(
     params = {**compile_info(), **parameters}
     query = _formulate_query(params, addProject)
     _, response = request(Config.endpoint, query)
-
-    res = response.get("data", {}).get("add_project")
-    if res is None:
-        try:
-            error = response.get('errors', [DEFAULT_ERROR])[0]
-        except Exception:
-            error = DEFAULT_ERROR
-        res = {'success': False, 'message': error, 'latest_version': None}
+    res = _filter_response(response, 'add_project', addProject["response"])
     return res
 
 
@@ -129,3 +127,16 @@ def _formulate_query(params: dict, template: OperationTemplate) -> str:
     qparams = {x: template["args"][x].format(params[x]) for x in template["args"] if x in params}
     query = template["operation"].replace("$", ",".join([f"{x}:{y}" for x, y in qparams.items()]))
     return query
+
+
+def _filter_response(response: HTTPResponse, operation: str, fallback: dict):
+    res = response.get("data")
+    # success
+    if isinstance(res, dict):
+        return res.get(operation, fallback)
+
+    # Otherwise data is None, return fallback response with error reported
+    try:
+        fallback['message'] = response.get('errors')[0]['message']
+    finally:
+        return fallback
