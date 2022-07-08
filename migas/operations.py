@@ -3,6 +3,7 @@ Create queries and mutations to be sent to the graphql endpoint.
 """
 import sys
 import typing
+from http.client import HTTPResponse
 from uuid import UUID
 
 from migas.config import Config, telemetry_enabled
@@ -16,9 +17,13 @@ else:
     from typing_extensions import TypedDict
 
 
+DEFAULT_ERROR = '[migas-py] An error occurred.'
+
+
 class OperationTemplate(TypedDict):
     operation: str
     args: dict
+    response: dict
 
 
 getUsage: OperationTemplate = {
@@ -31,6 +36,11 @@ getUsage: OperationTemplate = {
         "end": '"{}"',
         "unique": "{}",
     },
+    "response": {
+        'success': False,
+        'hits': 0,
+        'message': DEFAULT_ERROR,
+    },
 }
 
 
@@ -39,7 +49,7 @@ def get_usage(
     project: str,
     start: str,
     end: str = None,
-    unique: bool = False,
+    # unique: bool = False,  # TODO: Add once supported in server
 ) -> dict:
     """
 
@@ -50,9 +60,9 @@ def get_usage(
     """
     params = _introspec(get_usage, locals())
     query = _formulate_query(params, getUsage)
-    status, response = request(Config.endpoint, query)
-    # TODO: Verify return is as expected
-    return status, response
+    _, response = request(Config.endpoint, query)
+    res = _filter_response(response, 'get_usage', getUsage["response"])
+    return res
 
 
 addProject: OperationTemplate = {
@@ -70,6 +80,11 @@ addProject: OperationTemplate = {
         "container": "{}",
         "platform": '"{}"',
         "arguments": '"{}"',
+    },
+    "response": {
+        'success': False,
+        'message': DEFAULT_ERROR,
+        'latest_version': None,
     },
 }
 
@@ -90,19 +105,9 @@ def add_project(
     # TODO: 3.9 - Replace with | operator
     params = {**compile_info(), **parameters}
     query = _formulate_query(params, addProject)
-    status, response = request(Config.endpoint, query)
-    # TODO: 3.10 - Replace with match/case
-
-    # expected response:
-
-    # {'data': {'add_project': {
-    # 'bad_versions': [],
-    # 'cached': False,
-    # 'latest_version': '21.0.2',
-    # 'message': '',
-    # 'success': True}}}
-
-    return status, response
+    _, response = request(Config.endpoint, query)
+    res = _filter_response(response, 'add_project', addProject["response"])
+    return res
 
 
 def _introspec(func: typing.Callable, func_locals: dict) -> dict:
@@ -122,3 +127,16 @@ def _formulate_query(params: dict, template: OperationTemplate) -> str:
     qparams = {x: template["args"][x].format(params[x]) for x in template["args"] if x in params}
     query = template["operation"].replace("$", ",".join([f"{x}:{y}" for x, y in qparams.items()]))
     return query
+
+
+def _filter_response(response: HTTPResponse, operation: str, fallback: dict):
+    res = response.get("data")
+    # success
+    if isinstance(res, dict):
+        return res.get(operation, fallback)
+
+    # Otherwise data is None, return fallback response with error reported
+    try:
+        fallback['message'] = response.get('errors')[0]['message']
+    finally:
+        return fallback

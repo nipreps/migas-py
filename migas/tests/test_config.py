@@ -1,3 +1,4 @@
+import json
 import uuid
 
 import pytest
@@ -25,13 +26,24 @@ def test_setup_default():
     assert conf.session_id is None
     assert conf._is_setup is True
 
-    # after being set up, cannot be overriden
+    # after being set up, will not be changed unless forcing
     new_endpoint = 'https://github.com'
     config.setup(endpoint=new_endpoint)
     assert conf.endpoint == config.DEFAULT_ENDPOINT
+    config.setup(force=True, endpoint=new_endpoint)
+    assert conf.endpoint == new_endpoint
 
-    # but fine if cleared
+    # ensure loading is working
+    nuid = '00000000-0000-0000-0000-000000000000'
+    config_dict = json.loads(config.DEFAULT_CONFIG_FILE.read_text())
+    config_dict['session_id'] = nuid
+    config.DEFAULT_CONFIG_FILE.write_text(json.dumps(config_dict))
+    assert conf.session_id is None
+    # again, forcing is required to overwrite
+    conf.load(config.DEFAULT_CONFIG_FILE, force=True)
+    assert conf.session_id == nuid
+
+    # can be reset altogether
     conf._reset()
     assert conf.endpoint is None
-    config.setup(endpoint=new_endpoint)
-    assert conf.endpoint == new_endpoint
+    assert conf.session_id is None
