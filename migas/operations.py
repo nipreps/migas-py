@@ -16,6 +16,9 @@ else:
     from typing_extensions import TypedDict
 
 
+DEFAULT_ERROR = '[migas-py] An error occurred.'
+
+
 class OperationTemplate(TypedDict):
     operation: str
     args: dict
@@ -39,7 +42,7 @@ def get_usage(
     project: str,
     start: str,
     end: str = None,
-    unique: bool = False,
+    # unique: bool = False,  # TODO: Add once supported in server
 ) -> dict:
     """
 
@@ -50,9 +53,16 @@ def get_usage(
     """
     params = _introspec(get_usage, locals())
     query = _formulate_query(params, getUsage)
-    status, response = request(Config.endpoint, query)
-    # TODO: Verify return is as expected
-    return status, response
+    _, response = request(Config.endpoint, query)
+
+    res = response.get("data", {}).get("get_usage")
+    if res is None:
+        try:
+            error = response.get('errors', [DEFAULT_ERROR])[0]
+        except Exception:
+            error = DEFAULT_ERROR
+        res = {'success': False, 'hits': 0, 'message': error}
+    return res
 
 
 addProject: OperationTemplate = {
@@ -90,19 +100,16 @@ def add_project(
     # TODO: 3.9 - Replace with | operator
     params = {**compile_info(), **parameters}
     query = _formulate_query(params, addProject)
-    status, response = request(Config.endpoint, query)
-    # TODO: 3.10 - Replace with match/case
+    _, response = request(Config.endpoint, query)
 
-    # expected response:
-
-    # {'data': {'add_project': {
-    # 'bad_versions': [],
-    # 'cached': False,
-    # 'latest_version': '21.0.2',
-    # 'message': '',
-    # 'success': True}}}
-
-    return status, response
+    res = response.get("data", {}).get("add_project")
+    if res is None:
+        try:
+            error = response.get('errors', [DEFAULT_ERROR])[0]
+        except Exception:
+            error = DEFAULT_ERROR
+        res = {'success': False, 'message': error, 'latest_version': None}
+    return res
 
 
 def _introspec(func: typing.Callable, func_locals: dict) -> dict:
