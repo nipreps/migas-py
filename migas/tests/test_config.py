@@ -47,3 +47,24 @@ def test_setup_default():
     conf._reset()
     assert conf.endpoint is None
     assert conf.session_id is None
+
+
+def test_safe_uuid_factory(monkeypatch):
+    import getpass
+
+    uid0 = config._safe_uuid_factory()
+    assert uid0
+
+    def none():
+        users = {}
+        return users['none']
+
+    # simulate unknown user
+    monkeypatch.setattr(getpass, 'getuser', none)
+    with pytest.raises(KeyError):
+        getpass.getuser()
+
+    uid1 = config._safe_uuid_factory()
+    assert uid1
+
+    assert uid0 != uid1
