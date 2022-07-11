@@ -52,11 +52,20 @@ def get_usage(
     # unique: bool = False,  # TODO: Add once supported in server
 ) -> dict:
     """
+    Query project usage.
+
+    This function requires a `project`, which is a string in the format of the GitHub
+    `{owner}/{repository}`, and the start date to collect information.
+
+    Additionally, an end date can be provided, or the current datetime will be used.
 
     `start` and `end` can be in either of the following formats:
         - YYYY-MM-DD
         - YYYY-MM-DDTHH:MM:SSZ
 
+    Returns
+    -------
+    A dictionary containing the number of hits a project received.
     """
     params = _introspec(get_usage, locals())
     query = _formulate_query(params, getUsage)
@@ -102,6 +111,23 @@ def add_project(
     platform: str = None,
     arguments: list = None,
 ) -> dict:
+    """
+    Send project usage information to the telemetry server.
+
+    This function requires a `project`, which is a string in the format of the GitHub
+    `{owner}/{repository}`, and the current version of the software.
+
+    Additionally, the follow information is collected:
+    - language (python is assumed by default)
+    - language version
+    - platform
+    - containerized (docker, apptainer/singularity)
+
+    Returns
+    -------
+    A dictionary containing the latest released version of the project,
+    as well as any messages sent by the developers.
+    """
     parameters = _introspec(add_project, locals())
     # TODO: 3.9 - Replace with | operator
     params = {**compile_info(), **parameters}
