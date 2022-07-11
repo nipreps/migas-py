@@ -95,6 +95,7 @@ def add_project(
     project_version: str,
     language: str = None,
     language_version: str = None,
+    status: str = None,
     user_id: UUID = None,
     session_id: UUID = None,
     container: str = None,
