@@ -9,8 +9,16 @@ from . import __version__
 
 ETResponse = typing.Tuple[int, typing.Union[dict, str]]  # status code, body
 
+TIMEOUT_RESPONSE = (
+    408,
+    {"data": None, "errors": [{"message": "Connection to server timed out."}]},
+)
+UNAVAIL_RESPONSE = (503, {"data": None, "errors": [{"message": "Could not connect to server."}]})
 
-def request(url: str, query: str, *, timeout: int = 3, chunk_size: int = None) -> ETResponse:
+
+def request(
+    url: str, query: str, *, timeout: float = 3, method: str = "POST", chunk_size: int = None
+) -> ETResponse:
     purl = urlparse(url)
     # TODO: 3.10 - Replace with match/case
     if purl.scheme == 'https':
@@ -31,13 +39,21 @@ def request(url: str, query: str, *, timeout: int = 3, chunk_size: int = None) -
     }
 
     try:
-        conn.request("POST", purl.path, body, headers)
+        conn.request(method, purl.path, body, headers)
         response = conn.getresponse()
         body = _read_response(response, chunk_size)
     except TimeoutError:
-        return (408, {"data": None, "errors": [{"message": "Connection to server timed out."}]})
+        return TIMEOUT_RESPONSE
     except ConnectionError:
-        return (503, {"data": None, "errors": [{"message": "Server is not available."}]})
+        return UNAVAIL_RESPONSE
+    except OSError as e:
+        # Python < 3.10, this could be socket.timeout or socket.gaierror
+        import socket
+
+        if isinstance(e, socket.timeout):
+            return TIMEOUT_RESPONSE
+        else:
+            return UNAVAIL_RESPONSE
     finally:
         conn.close()
 
