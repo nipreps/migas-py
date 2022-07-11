@@ -182,5 +182,11 @@ def _safe_uuid_factory() -> str:
     import getpass
     import socket
 
-    name = f"{getpass.getuser()}@{os.getenv('HOSTNAME', socket.gethostname())}"
+    try:
+        user = getpass.getuser()
+    except KeyError:
+        # fails in cases of running docker containers as non-root
+        user = f'user-{os.getuid()}'
+
+    name = f"{user}@{os.getenv('HOSTNAME', socket.gethostname())}"
     return str(uuid.uuid3(uuid.NAMESPACE_DNS, name))
