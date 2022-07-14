@@ -69,7 +69,7 @@ def get_usage(
     """
     params = _introspec(get_usage, locals())
     query = _formulate_query(params, getUsage)
-    _, response = request(Config.endpoint, query)
+    _, response = request(Config.endpoint, query=query)
     res = _filter_response(response, 'get_usage', getUsage["response"])
     return res
 
@@ -132,7 +132,7 @@ def add_project(
     # TODO: 3.9 - Replace with | operator
     params = {**compile_info(), **parameters}
     query = _formulate_query(params, addProject)
-    _, response = request(Config.endpoint, query)
+    _, response = request(Config.endpoint, query=query)
     res = _filter_response(response, 'add_project', addProject["response"])
     return res
 

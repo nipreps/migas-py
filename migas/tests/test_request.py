@@ -8,15 +8,20 @@ POST_QUERY = 'query{get_usage{project:"git/hub",start:"2022-07-01"}}'
 
 
 @pytest.mark.parametrize(
-    'endpoint,body,method', [(DEFAULT_ENDPOINT, POST_QUERY, "POST"), (ROOT, '', "GET")]
+    'endpoint,query,method', [(DEFAULT_ENDPOINT, POST_QUERY, "POST"), (ROOT, None, "GET")]
 )
-def test_request(endpoint, body, method):
-    status, res = request(endpoint, body, method=method)
+def test_request(endpoint, query, method):
+    status, res = request(endpoint, query=query, method=method, timeout=5)
     assert status == 200
     assert res
 
 
-def test_timeout():
-    status, res = request(ROOT, '', timeout=0.00001, method="GET")
+def test_timeout(monkeypatch):
+    status, res = request(ROOT, timeout=0.00001, method="GET")
+    assert status == 408
+    assert res['errors']
+
+    monkeypatch.setenv('MIGAS_TIMEOUT', '0.000001')
+    status, res = request(ROOT, method="GET")
     assert status == 408
     assert res['errors']
