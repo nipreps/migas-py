@@ -1,6 +1,7 @@
 """Stripped down, minimal import way to communicate with server"""
 
 import json
+import os
 import typing
 from http.client import HTTPConnection, HTTPResponse, HTTPSConnection
 from urllib.parse import urlparse
@@ -9,6 +10,7 @@ from . import __version__
 
 ETResponse = typing.Tuple[int, typing.Union[dict, str]]  # status code, body
 
+DEFAULT_TIMEOUT = 3
 TIMEOUT_RESPONSE = (
     408,
     {"data": None, "errors": [{"message": "Connection to server timed out."}]},
@@ -17,7 +19,12 @@ UNAVAIL_RESPONSE = (503, {"data": None, "errors": [{"message": "Could not connec
 
 
 def request(
-    url: str, query: str, *, timeout: float = 3, method: str = "POST", chunk_size: int = None
+    url: str,
+    *,
+    query: str = None,
+    timeout: float = None,
+    method: str = "POST",
+    chunk_size: int = None,
 ) -> ETResponse:
     purl = urlparse(url)
     # TODO: 3.10 - Replace with match/case
@@ -28,18 +35,25 @@ def request(
     else:
         raise ValueError("URL scheme not supported")
 
-    body = json.dumps({"query": query}).encode("utf-8")
+    timeout = timeout or float(os.getenv("MIGAS_TIMEOUT", DEFAULT_TIMEOUT))
     conn = Connection(purl.netloc, timeout=timeout)
     headers = {
         'User-Agent': f'migas-client/{__version__}',
         'Accept-Encoding': 'gzip, deflate, br',
         'Accept': '*/*',
-        'Content-Length': len(body),
-        'Content-Type': 'application/json',
     }
+    body = None
+    if query:
+        body = json.dumps({"query": query}).encode("utf-8")
+        headers.update(
+            {
+                'Content-Length': len(body),
+                'Content-Type': 'application/json; charset=utf-8',
+            }
+        )
 
     try:
-        conn.request(method, purl.path, body, headers)
+        conn.request(method, purl.path, body=body, headers=headers)
         response = conn.getresponse()
         body = _read_response(response, chunk_size)
     except TimeoutError:
