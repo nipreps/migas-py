@@ -128,6 +128,8 @@ def add_project(
     A dictionary containing the latest released version of the project,
     as well as any messages sent by the developers.
     """
+    if not user_id:
+        user_id = Config.user_id
     parameters = _introspec(add_project, locals())
     # TODO: 3.9 - Replace with | operator
     params = {**compile_info(), **parameters}
