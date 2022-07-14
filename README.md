@@ -62,3 +62,9 @@ To configure the client:
 ```python
 import migas; migas.setup(endpoint='your-custom-endpoint-here', force=True)
 ```
+
+
+### Environmental variables
+
+To enable `migas`, you must have a non-empty environmental variable `ENABLE_MIGAS` set.
+Additionally, you may control the request timeout by setting `MIGAS_TIMEOUT`.
