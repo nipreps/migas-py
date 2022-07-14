@@ -84,8 +84,8 @@ addProject: OperationTemplate = {
         "language_version": '"{}"',
         # optional
         "status": "{}",
-        "user": '"{}"',
-        "session": '"{}"',
+        "user_id": '"{}"',
+        "session_id": '"{}"',
         "container": "{}",
         "platform": '"{}"',
         "arguments": '"{}"',
