@@ -2,6 +2,11 @@
 
 A Python package to communicate with a migas server.
 
+## About
+
+`migas` (*mee-gahs*) is a Python client to facilitate communication with a [`migas` server](https://github.com/mgxd/migas-server).
+
+
 ## API
 
 `migas` includes the following functions to communicate with the telemetry server:
@@ -9,16 +14,51 @@ A Python package to communicate with a migas server.
 ### migas.add_project()
 
 Send a breadcrumb with usage information to the server.
-The server will attempt to return information about the project,
-such as the latest version and bad versions.
+Usage information includes:
+ - application
+ - application version
+ - python version
+ - operating system
+ - application status
+
+The server will attempt to return version information about the project.
+
+<details>
+<summary>add_project example</summary>
+
+```python
+>>> add_project('mgxd/migas-py', '0.0.1')
+{'bad_versions': [],
+ 'cached': True,
+ 'latest_version': '0.0.4',
+ 'message': '',
+ 'success': True}
+```
+
+</details>
+
 
 ### migas.get_usage()
 
 Check number of uses a `project` has received from a start date, and optionally an end date.
 If no end date is specified, the current datetime is used.
 
+<details>
+<summary>get_usage example</summary>
+
+```python
+>>> get_usage('mgxd/migas-py', '2022-07-01')
+{'hits': 7, 'message': '', 'unique': False}
+```
+
+</details>
+
 ## Customization
 
-Normally, calling `migas.setup()` will populate the internal configuration with the default endpoint,
-but in cases where you wish to host your own instance of a `migas` server,
-you can pass in an `endpoint` parameter to route traffic accordingly.
+By default, `migas-py` will communicate with our hosted `migas server`, however it can easily be configured to communicate with any `migas server`.
+
+To configure the client:
+
+```python
+import migas; migas.setup(endpoint='your-custom-endpoint-here', force=True)
+```
