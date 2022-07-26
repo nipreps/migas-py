@@ -1,6 +1,6 @@
 import pytest
 
-from .. import config
+from migas import config
 
 
 def test_setup_default(tmp_path):
@@ -70,6 +70,33 @@ def test_safe_uuid_factory(monkeypatch):
     assert uid1
 
     assert uid0 != uid1
+
+
+def test_multiproc_config(tmp_path):
+    import os
+    import subprocess as sp
+
+    this_pid = os.getpid()
+    conf = config.Config
+    config.setup(endpoint='abcdef')  # populate with custom endpoint
+
+    code = """
+import os
+print(os.getppid())
+"""
+    proc = sp.run(['python'], input=code, capture_output=True, encoding='UTF-8')
+    child_parent_pid = proc.stdout.strip()
+    assert str(this_pid) == child_parent_pid
+
+    code = """
+import migas
+migas.setup()
+migas.print_config()
+"""
+    proc = sp.run(['python'], input=code, capture_output=True, encoding='UTF-8')
+    child_config = proc.stdout.strip()
+    print(child_config)
+    assert 'abcdef' in child_config
 
 
 def test_print_config(capsys):

@@ -69,6 +69,7 @@ class Config:
     """
 
     _file: File = None
+    _pid: int = None
     _is_setup: bool = False
     endpoint: str = None
     user_id: str = None
@@ -92,7 +93,8 @@ class Config:
 
         If class was already configured, existing configuration is used.
         """
-
+        if cls._pid is None:
+            cls._pid = os.getpid()
         cls.endpoint = endpoint or DEFAULT_ENDPOINT
         if user_id is not None or cls.user_id is None:
             try:
@@ -127,7 +129,7 @@ class Config:
         config = {
             field: getattr(cls, field)
             for field in cls.__annotations__.keys()
-            if not field.startswith('_')
+            if field not in ('_is_setup', '_file')
         }
         # TODO: Make safe when multiprocessing
         Path(filename).parent.mkdir(parents=True, exist_ok=True)
@@ -160,27 +162,29 @@ def setup(
     This method must be called before communicating with the server.
     """
     if filename is not None:
-        _can_load(filename)
+        _try_load(filename)
     else:
         # check for existing configuration files
         # first current PID, and if not then parent PID
         # if exists and loads, setup is complete
         (
-            _can_load(DEFAULT_CONFIG_FILE_FMT(pid=os.getpid()))
-            or _can_load(DEFAULT_CONFIG_FILE_FMT(pid=os.getppid()))
+            _try_load(DEFAULT_CONFIG_FILE_FMT(pid=os.getpid()))
+            or _try_load(DEFAULT_CONFIG_FILE_FMT(pid=os.getppid()))
         )
 
-    # collect system information and initialize config
-    info = compile_info()
-    Config.init(
-        endpoint=endpoint,
-        user_id=user_id,
-        session_id=session_id,
-        language=info['language'],
-        language_version=info['language_version'],
-        platform=info['platform'],
-        container=info['container'],
-    )
+    # if the PID loaded is this process's parent PID, just use the loaded config
+    if Config._pid != os.getppid():
+        # collect system information and initialize config
+        info = compile_info()
+        Config.init(
+            endpoint=endpoint,
+            user_id=user_id,
+            session_id=session_id,
+            language=info['language'],
+            language_version=info['language_version'],
+            platform=info['platform'],
+            container=info['container'],
+        )
     if save_config:
         Config.save(filename or DEFAULT_CONFIG_FILE_FMT(pid=os.getpid()))
     Config._is_setup = True
@@ -191,7 +195,7 @@ def print_config() -> None:
         print(f'{field.name}: {getattr(Config, field.name)}')
 
 
-def _can_load(filename) -> bool:
+def _try_load(filename) -> bool:
     if Path(filename).exists():
         # load and use
         return Config.load(filename)
