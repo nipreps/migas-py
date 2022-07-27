@@ -49,6 +49,7 @@ def test_setup_default(tmp_path):
     assert conf.language_version
     assert conf.platform
     assert conf.container
+    assert conf.is_ci
 
 
 def test_safe_uuid_factory(monkeypatch):

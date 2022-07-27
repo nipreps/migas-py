@@ -77,6 +77,7 @@ class Config:
     language_version: str = None
     platform: str = None
     container: str = None
+    is_ci: bool = None
 
     @classmethod
     def init(
@@ -153,12 +154,11 @@ def setup(
     save_config: bool = True,
 ) -> None:
     """
-    Configure the client, and save configuration to an output file.
+    Prepare the client to communicate with a migas server.
 
-    # This method is invoked before each API call, but can also be called by
-    # application developers for finer-grain control.
+    This method is required prior to calling the API.
 
-    This method must be called before communicating with the server.
+    If `user_id` is not provided, one will be generated.
     """
     if filename is not None:
         _try_load(filename)
@@ -183,6 +183,7 @@ def setup(
             language_version=info['language_version'],
             platform=info['platform'],
             container=info['container'],
+            is_ci=info['is_ci'],
         )
     if save_config:
         Config.save(filename or DEFAULT_CONFIG_FILE_FMT(pid=os.getpid()))

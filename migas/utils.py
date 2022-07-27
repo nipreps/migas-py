@@ -4,10 +4,6 @@ import sys
 from pathlib import Path
 
 
-def is_ci():
-    ...
-
-
 def is_container():
     root = Path('/')
     if (root / '.dockerenv').exists():
@@ -27,6 +23,9 @@ def get_platform_info() -> dict:
 
 
 def compile_info() -> dict:
+    from ci_info import is_ci
+
     data = get_platform_info()
     data['container'] = is_container()
+    data['is_ci'] = is_ci()
     return data
