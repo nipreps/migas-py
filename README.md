@@ -7,18 +7,33 @@ A Python package to communicate with a migas server.
 `migas` (*mee-gahs*) is a Python client to facilitate communication with a [`migas` server](https://github.com/mgxd/migas-server).
 
 
-## API
+## Usage
+
+To start communicating with a `migas` server, the client must first be setup.
+
+```python
+import migas; migas.setup()
+```
+
+By default, `migas-py` will communicate with the official hosted `migas` server.
+However it can easily be configured to communicate with any hosted `migas` server.
+
+```python
+import migas; migas.setup(endpoint='your-endpoint')
+```
+
+`setup()` will populate the [interal configuration](#configuration), which is done at the process level.
+
+### API
 
 `migas` includes the following functions to communicate with the telemetry server:
 
-### migas.add_project()
+#### migas.add_project()
 
 Send a breadcrumb with usage information to the server.
 Usage information includes:
  - application
  - application version
- - python version
- - operating system
  - application status
 
 The server will attempt to return version information about the project.
@@ -38,7 +53,7 @@ The server will attempt to return version information about the project.
 </details>
 
 
-### migas.get_usage()
+#### migas.get_usage()
 
 Check number of uses a `project` has received from a start date, and optionally an end date.
 If no end date is specified, the current datetime is used.
@@ -53,18 +68,21 @@ If no end date is specified, the current datetime is used.
 
 </details>
 
-## Customization
+## User Control
 
-By default, `migas-py` will communicate with our hosted `migas server`, however it can easily be configured to communicate with any `migas server`.
+`migas` can controlled by the following environmental variables:
 
-To configure the client:
+| Envvar | Description | Value |
+| ---- | ---- | ---- |
+| MIGAS_OPTOUT | Disable telemetry collection | Any |
+| MIGAS_TIMEOUT | Seconds to wait for server response | Number >= 0 |
 
-```python
-import migas; migas.setup(endpoint='your-custom-endpoint-here', force=True)
-```
 
+## Configuration
 
-### Environmental variables
+The internal configuration stores the following telemetry information:
 
-To enable `migas`, you must have a non-empty environmental variable `ENABLE_MIGAS` set.
-Additionally, you may control the request timeout by setting `MIGAS_TIMEOUT`.
+- language and language version
+- operating system
+- run within a container
+- run from continuous integration

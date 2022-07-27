@@ -2,12 +2,16 @@ import json
 import os
 import typing
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from functools import wraps
 from pathlib import Path
+from tempfile import gettempdir
 
+from .utils import compile_info
+
+DEFAULT_ROOT = 'https://migas.herokuapp.com/'
 DEFAULT_ENDPOINT = 'https://migas.herokuapp.com/graphql'
-DEFAULT_CONFIG_FILE = Path.home() / '.cache' / 'migas' / 'config.json'
+DEFAULT_CONFIG_FILE_FMT = str(Path(gettempdir()) / 'migas-{pid}.json').format
 
 # TODO: 3.10 - Replace with | operator
 File = typing.Union[str, Path]
@@ -31,16 +35,17 @@ def telemetry_enabled(func: typing.Callable) -> typing.Callable:
 
     @wraps(func)
     def can_send(*args, **kwargs):
-        if not os.getenv("ENABLE_MIGAS", "0").lower() in ("1", "true", "y", "yes"):
+        if os.getenv("MIGAS_OPTOUT"):
             # do not communicate with server
             return {
                 "success": False,
-                "errors": [
-                    {"message": "migas is not enabled - set ENABLE_MIGAS environment variable."}
-                ],
+                "errors": [{"message": "migas telemetry is disabled."}],
             }
-        # otherwise, ensure config is set up
-        setup(force=False)
+        if not Config._is_setup:
+            return {
+                "success": False,
+                "errors": [{"message": "migas setup incomplete - did you call `migas.setup()`?"}],
+            }
         return func(*args, **kwargs)
 
     return can_send
@@ -59,13 +64,20 @@ class Config:
     - `session_id`:
     A string representation of a UUID assigned to the lifespan of the migas invocation.
 
-    This class is not meant to be initialized, instead usage depends on class attributes.
+    This class will not be initialized, instead usage depends on class attributes.
     """
 
+    _file: File = None
+    _pid: int = None
+    _is_setup: bool = False
     endpoint: str = None
     user_id: str = None
     session_id: str = None
-    _is_setup = False
+    language: str = None
+    language_version: str = None
+    platform: str = None
+    container: str = None
+    is_ci: bool = None
 
     @classmethod
     def init(
@@ -74,20 +86,16 @@ class Config:
         endpoint: str = None,
         user_id: str = None,
         session_id: str = None,
-        force: bool = False,
-        complete_init: bool = True,
+        **kwargs,
     ) -> None:
         """
         Setup migas configuration.
 
         If class was already configured, existing configuration is used.
         """
-        if not force and cls._is_setup:
-            return
-        if endpoint is not None:
-            cls.endpoint = endpoint
-        elif cls.endpoint is None:
-            cls.endpoint = DEFAULT_ENDPOINT
+        if cls._pid is None:
+            cls._pid = os.getpid()
+        cls.endpoint = endpoint or DEFAULT_ENDPOINT
         if user_id is not None or cls.user_id is None:
             try:
                 uuid.UUID(user_id)
@@ -101,28 +109,35 @@ class Config:
                 cls.session_id = session_id
             except Exception:
                 pass
-        cls._is_setup = complete_init
+
+        for param, val in kwargs.items():
+            if hasattr(cls, param):
+                setattr(cls, param, val)
 
     @classmethod
     @suppress_errors
-    def load(cls, filename: File, force: bool = False) -> bool:
+    def load(cls, filename: File) -> bool:
         """Load existing configuration file, or create a new one."""
         config = json.loads(Path(filename).read_text())
-        cls.init(complete_init=False, force=force, **config)
+        cls.init(**config)
         return True
 
     @classmethod
     @suppress_errors
-    def save(cls, filename: File) -> str:
+    def save(cls, filename: File) -> None:
         """Save to a JSON file."""
-        config = {field: getattr(cls, field) for field in cls.__annotations__.keys()}
+        config = {
+            field: getattr(cls, field)
+            for field in cls.__annotations__.keys()
+            if field not in ('_is_setup', '_file')
+        }
         # TODO: Make safe when multiprocessing
         Path(filename).parent.mkdir(parents=True, exist_ok=True)
         Path(filename).write_text(json.dumps(config))
-        return str(filename)
+        cls._file = filename
 
     @classmethod
-    def _reset(cls):
+    def _reset(cls) -> None:
         """Reset the config class attributes."""
         cls.endpoint = None
         cls.user_id = None
@@ -135,26 +150,56 @@ def setup(
     endpoint: str = None,
     user_id: str = None,
     session_id: str = None,
-    save_config: bool = True,
     filename: File = None,
-    force: bool = False,
-) -> bool:
+    save_config: bool = True,
+) -> None:
     """
-    Configure the client, and save configuration to an output file.
+    Prepare the client to communicate with a migas server.
 
-    This method is invoked before each API call, but can also be called by
-    application developers for finer-grain control.
+    This method is required prior to calling the API.
+
+    If `user_id` is not provided, one will be generated.
     """
-    if not force and Config._is_setup:
-        return False
-    filename = filename or DEFAULT_CONFIG_FILE
-    if Path(filename).exists():
-        Config.load(filename, force=force)
-    # if any parameters have been set, override the current attribute
-    Config.init(endpoint=endpoint, user_id=user_id, session_id=session_id, force=force)
+    if filename is not None:
+        _try_load(filename)
+    else:
+        # check for existing configuration files
+        # first current PID, and if not then parent PID
+        # if exists and loads, setup is complete
+        (
+            _try_load(DEFAULT_CONFIG_FILE_FMT(pid=os.getpid()))
+            or _try_load(DEFAULT_CONFIG_FILE_FMT(pid=os.getppid()))
+        )
+
+    # if the PID loaded is this process's parent PID, just use the loaded config
+    if Config._pid != os.getppid():
+        # collect system information and initialize config
+        info = compile_info()
+        Config.init(
+            endpoint=endpoint,
+            user_id=user_id,
+            session_id=session_id,
+            language=info['language'],
+            language_version=info['language_version'],
+            platform=info['platform'],
+            container=info['container'],
+            is_ci=info['is_ci'],
+        )
     if save_config:
-        Config.save(filename)
-    return True
+        Config.save(filename or DEFAULT_CONFIG_FILE_FMT(pid=os.getpid()))
+    Config._is_setup = True
+
+
+def print_config() -> None:
+    for field in fields(Config):
+        print(f'{field.name}: {getattr(Config, field.name)}')
+
+
+def _try_load(filename) -> bool:
+    if Path(filename).exists():
+        # load and use
+        return Config.load(filename)
+    return False
 
 
 def gen_uuid(uuid_factory: str = "safe") -> str:
