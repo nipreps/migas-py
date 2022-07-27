@@ -35,13 +35,11 @@ def telemetry_enabled(func: typing.Callable) -> typing.Callable:
 
     @wraps(func)
     def can_send(*args, **kwargs):
-        if not os.getenv("ENABLE_MIGAS", "0").lower() in ("1", "true", "y", "yes"):
+        if os.getenv("MIGAS_OPTOUT"):
             # do not communicate with server
             return {
                 "success": False,
-                "errors": [
-                    {"message": "migas is not enabled - set ENABLE_MIGAS environment variable."}
-                ],
+                "errors": [{"message": "migas telemetry is disabled."}],
             }
         if not Config._is_setup:
             return {
