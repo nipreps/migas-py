@@ -10,7 +10,7 @@ POST_QUERY = 'query{get_usage{project:"git/hub",start:"2022-07-01"}}'
     'endpoint,query,method', [(DEFAULT_ENDPOINT, POST_QUERY, "POST"), (DEFAULT_ROOT, None, "GET")]
 )
 def test_request(endpoint, query, method):
-    status, res = request(endpoint, query=query, method=method, timeout=5)
+    status, res = request(endpoint, query=query, method=method)
     assert status == 200
     assert res
 
