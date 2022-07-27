@@ -9,6 +9,7 @@ from tempfile import gettempdir
 
 from .utils import compile_info
 
+DEFAULT_ROOT = 'https://migas.herokuapp.com/'
 DEFAULT_ENDPOINT = 'https://migas.herokuapp.com/graphql'
 DEFAULT_CONFIG_FILE_FMT = str(Path(gettempdir()) / 'migas-{pid}.json').format
 
