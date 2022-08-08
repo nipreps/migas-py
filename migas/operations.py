@@ -8,7 +8,6 @@ from uuid import UUID
 
 from migas.config import Config, telemetry_enabled
 from migas.request import request
-from migas.utils import compile_info
 
 if sys.version_info[:2] >= (3, 8):
     from typing import TypedDict
@@ -82,6 +81,7 @@ addProject: OperationTemplate = {
         "project_version": '"{}"',
         "language": '"{}"',
         "language_version": '"{}"',
+        "is_ci": '{}',
         # optional
         "status": "{}",
         "user_id": '"{}"',
@@ -128,11 +128,9 @@ def add_project(
     A dictionary containing the latest released version of the project,
     as well as any messages sent by the developers.
     """
-    if not user_id:
-        user_id = Config.user_id
     parameters = _introspec(add_project, locals())
     # TODO: 3.9 - Replace with | operator
-    params = {**compile_info(), **parameters}
+    params = {**Config.populate(), **parameters}
     query = _formulate_query(params, addProject)
     _, response = request(Config.endpoint, query=query)
     res = _filter_response(response, 'add_project', addProject["response"])

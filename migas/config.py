@@ -137,6 +137,24 @@ class Config:
         cls._file = filename
 
     @classmethod
+    def populate(cls) -> dict:
+        res = {
+            f: getattr(cls, f)
+            for f in (
+                'user_id',
+                'session_id',
+                'language',
+                'language_version',
+                'platform',
+                'container',
+            )
+            if getattr(cls, f) is not None
+        }
+        # boolean syntax
+        res['is_ci'] = str(cls.is_ci).lower()
+        return res
+
+    @classmethod
     def _reset(cls) -> None:
         """Reset the config class attributes."""
         cls.endpoint = None
