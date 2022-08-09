@@ -50,5 +50,5 @@ def test_get_usage():
     assert all_usage >= res['hits'] > 0
 
     res = get_usage(test_project, start=future())
-    assert res['success'] is True
+    assert res['success'] is False
     assert res['hits'] == 0
