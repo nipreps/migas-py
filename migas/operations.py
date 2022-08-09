@@ -4,7 +4,6 @@ Create queries and mutations to be sent to the graphql endpoint.
 import sys
 import typing
 from http.client import HTTPResponse
-from uuid import UUID
 
 from migas.config import Config, telemetry_enabled
 from migas.request import request
@@ -48,7 +47,7 @@ def get_usage(
     project: str,
     start: str,
     end: str = None,
-    # unique: bool = False,  # TODO: Add once supported in server
+    unique: bool = False,
 ) -> dict:
     """
     Query project usage.
@@ -61,6 +60,8 @@ def get_usage(
     `start` and `end` can be in either of the following formats:
         - YYYY-MM-DD
         - YYYY-MM-DDTHH:MM:SSZ
+
+    If `unique` is set to `True`, aggregates multiple uses by the same user as a single use.
 
     Returns
     -------
