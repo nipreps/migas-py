@@ -63,7 +63,7 @@ If no end date is specified, the current datetime is used.
 
 ```python
 >>> get_usage('mgxd/migas-py', '2022-07-01')
-{'hits': 7, 'message': '', 'unique': False}
+{'hits': 7, 'message': '', 'unique': False, 'success': True}
 ```
 
 </details>

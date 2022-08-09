@@ -70,6 +70,15 @@ class Config:
     _file: File = None
     _pid: int = None
     _is_setup: bool = False
+    _telemetry_attrs = (
+        'user_id',
+        'session_id',
+        'language',
+        'language_version',
+        'platform',
+        'container',
+        'is_ci',
+    )
     endpoint: str = None
     user_id: str = None
     session_id: str = None
@@ -138,21 +147,7 @@ class Config:
 
     @classmethod
     def populate(cls) -> dict:
-        res = {
-            f: getattr(cls, f)
-            for f in (
-                'user_id',
-                'session_id',
-                'language',
-                'language_version',
-                'platform',
-                'container',
-            )
-            if getattr(cls, f) is not None
-        }
-        # boolean syntax
-        res['is_ci'] = str(cls.is_ci).lower()
-        return res
+        return {f: getattr(cls, f) for f in cls._telemetry_attrs if getattr(cls, f) is not None}
 
     @classmethod
     def _reset(cls) -> None:

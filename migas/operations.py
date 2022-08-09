@@ -4,7 +4,6 @@ Create queries and mutations to be sent to the graphql endpoint.
 import sys
 import typing
 from http.client import HTTPResponse
-from uuid import UUID
 
 from migas.config import Config, telemetry_enabled
 from migas.request import request
@@ -48,7 +47,7 @@ def get_usage(
     project: str,
     start: str,
     end: str = None,
-    # unique: bool = False,  # TODO: Add once supported in server
+    unique: bool = False,
 ) -> dict:
     """
     Query project usage.
@@ -61,6 +60,8 @@ def get_usage(
     `start` and `end` can be in either of the following formats:
         - YYYY-MM-DD
         - YYYY-MM-DDTHH:MM:SSZ
+
+    If `unique` is set to `True`, aggregates multiple uses by the same user as a single use.
 
     Returns
     -------
@@ -102,20 +103,13 @@ addProject: OperationTemplate = {
 def add_project(
     project: str,
     project_version: str,
-    language: str = None,
-    language_version: str = None,
-    status: str = None,
-    user_id: UUID = None,
-    session_id: UUID = None,
-    container: str = None,
-    platform: str = None,
-    arguments: list = None,
+    **kwargs,
 ) -> dict:
     """
     Send project usage information to the telemetry server.
 
     This function requires a `project`, which is a string in the format of the GitHub
-    `{owner}/{repository}`, and the current version of the software.
+    `{owner}/{repository}`, and the current version being used.
 
     Additionally, the follow information is collected:
     - language (python is assumed by default)
@@ -130,7 +124,7 @@ def add_project(
     """
     parameters = _introspec(add_project, locals())
     # TODO: 3.9 - Replace with | operator
-    params = {**Config.populate(), **parameters}
+    params = {**Config.populate(), **kwargs, **parameters}
     query = _formulate_query(params, addProject)
     _, response = request(Config.endpoint, query=query)
     res = _filter_response(response, 'add_project', addProject["response"])
@@ -145,14 +139,24 @@ def _introspec(func: typing.Callable, func_locals: dict) -> dict:
     return {
         param: func_locals[param]
         for param, val in sig.parameters.items()
-        if func_locals[param] != val.default
+        if func_locals[param] != val.default and param != "kwargs"
     }
 
 
 def _formulate_query(params: dict, template: OperationTemplate) -> str:
     """Construct the graphql query."""
-    qparams = {x: template["args"][x].format(params[x]) for x in template["args"] if x in params}
-    query = template["operation"].replace("$", ",".join([f"{x}:{y}" for x, y in qparams.items()]))
+    query_params = {}
+    for template_arg in template["args"]:
+        if template_arg in params:
+            value = params[template_arg]
+            if isinstance(value, bool):
+                # booleans must be properly formatted
+                value = str(value).lower()
+            query_params[template_arg] = template["args"][template_arg].format(value)
+
+    query = template["operation"].replace(
+        "$", ",".join([f"{x}:{y}" for x, y in query_params.items()])
+    )
     return query
 
 
