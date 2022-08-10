@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import typing
 import uuid
@@ -9,12 +10,24 @@ from tempfile import gettempdir
 
 from .utils import compile_info
 
-DEFAULT_ROOT = 'https://migas.herokuapp.com/'
 DEFAULT_ENDPOINT = 'https://migas.herokuapp.com/graphql'
 DEFAULT_CONFIG_FILE_FMT = str(Path(gettempdir()) / 'migas-{pid}.json').format
 
 # TODO: 3.10 - Replace with | operator
 File = typing.Union[str, Path]
+
+
+def _init_logger(level=None):
+    if level is None:
+        level = logging.WARNING
+    logger = logging.getLogger("migas-py")
+    logger.setLevel(level)
+    ch = logging.StreamHandler()
+    ch.setLevel(level)
+    formatter = logging.Formatter('<%(name)s> [%(levelname)s] %(message)s')
+    ch.setFormatter(formatter)
+    logger.addHandler(ch)
+    return logger
 
 
 def suppress_errors(func):
@@ -200,6 +213,7 @@ def setup(
         )
     if save_config:
         Config.save(filename or DEFAULT_CONFIG_FILE_FMT(pid=os.getpid()))
+
     Config._is_setup = True
 
 
@@ -248,3 +262,6 @@ def _safe_uuid_factory() -> str:
 
     name = f"{user}@{os.getenv('HOSTNAME', socket.gethostname())}"
     return str(uuid.uuid3(uuid.NAMESPACE_DNS, name))
+
+
+logger = _init_logger(os.getenv("MIGAS_LOG_LEVEL"))
