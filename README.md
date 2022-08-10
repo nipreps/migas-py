@@ -72,10 +72,11 @@ If no end date is specified, the current datetime is used.
 
 `migas` can controlled by the following environmental variables:
 
-| Envvar | Description | Value |
-| ---- | ---- | ---- |
-| MIGAS_OPTOUT | Disable telemetry collection | Any |
-| MIGAS_TIMEOUT | Seconds to wait for server response | Number >= 0 |
+| Envvar | Description | Value | Default |
+| ---- | ---- | ---- | ---- |
+| MIGAS_OPTOUT | Disable telemetry collection | Any | None
+| MIGAS_TIMEOUT | Seconds to wait for server response | Number >= 0 | 5
+| MIGAS_LOG_LEVEL | Logger level | [Logging levels](https://docs.python.org/3/library/logging.html#levels) | WARNING
 
 
 ## Configuration
