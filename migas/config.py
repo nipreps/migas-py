@@ -17,9 +17,9 @@ DEFAULT_CONFIG_FILE_FMT = str(Path(gettempdir()) / 'migas-{pid}.json').format
 File = typing.Union[str, Path]
 
 
-def _init_logger(level=None):
+def _init_logger(level: typing.Union[int, str] = None) -> logging.Logger:
     if level is None:
-        level = logging.WARNING
+        level = os.getenv("MIGAS_LOG_LEVEL", logging.WARNING)
     logger = logging.getLogger("migas-py")
     logger.setLevel(level)
     ch = logging.StreamHandler()
@@ -30,7 +30,7 @@ def _init_logger(level=None):
     return logger
 
 
-def suppress_errors(func):
+def suppress_errors(func: typing.Callable) -> typing.Callable:
     """Decorator to silently fail the wrapped function"""
 
     @wraps(func)
@@ -264,4 +264,4 @@ def _safe_uuid_factory() -> str:
     return str(uuid.uuid3(uuid.NAMESPACE_DNS, name))
 
 
-logger = _init_logger(os.getenv("MIGAS_LOG_LEVEL"))
+logger = _init_logger()
