@@ -107,3 +107,12 @@ def test_print_config(capsys):
     for field in config.Config.__dataclass_fields__.keys():
         assert field in captured.out
         assert str(getattr(config.Config, field)) in captured.out
+
+
+def test_logger(monkeypatch):
+    logger = config.logger
+    assert logger.name == 'migas-py'
+    assert logger.level == 30
+    monkeypatch.setenv("MIGAS_LOG_LEVEL", "INFO")
+    config._init_logger()
+    assert logger.level == 20
