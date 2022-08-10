@@ -5,7 +5,7 @@ import sys
 import typing
 from http.client import HTTPResponse
 
-from migas.config import Config, telemetry_enabled
+from migas.config import Config, logger, telemetry_enabled
 from migas.request import request
 
 if sys.version_info[:2] >= (3, 8):
@@ -69,6 +69,7 @@ def get_usage(
     """
     params = _introspec(get_usage, locals())
     query = _formulate_query(params, getUsage)
+    logger.debug(query)
     _, response = request(Config.endpoint, query=query)
     res = _filter_response(response, 'get_usage', getUsage["response"])
     return res
@@ -126,6 +127,7 @@ def add_project(
     # TODO: 3.9 - Replace with | operator
     params = {**Config.populate(), **kwargs, **parameters}
     query = _formulate_query(params, addProject)
+    logger.debug(query)
     _, response = request(Config.endpoint, query=query)
     res = _filter_response(response, 'add_project', addProject["response"])
     return res
