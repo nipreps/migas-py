@@ -17,7 +17,7 @@ DEFAULT_CONFIG_FILE_FMT = str(Path(gettempdir()) / 'migas-{pid}.json').format
 File = typing.Union[str, Path]
 
 
-def _init_logger(level: typing.Union[int, str] = None) -> logging.Logger:
+def _init_logger(level: typing.Optional[str] = None) -> logging.Logger:
     if level is None:
         level = os.getenv("MIGAS_LOG_LEVEL", logging.WARNING)
     logger = logging.getLogger("migas-py")
