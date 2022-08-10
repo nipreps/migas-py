@@ -7,6 +7,7 @@ from http.client import HTTPConnection, HTTPResponse, HTTPSConnection
 from urllib.parse import urlparse
 
 from . import __version__
+from .config import logger
 
 ETResponse = typing.Tuple[int, typing.Union[dict, str]]  # status code, body
 
@@ -72,8 +73,7 @@ def request(
         conn.close()
 
     if not response.headers.get("X-Backend-Server"):
-        # TODO: Implement logging
-        print("migas server is incorrectly configured.")
+        logger.warning("migas server is incorrectly configured.")
 
     if response.headers.get("Content-Type").startswith("application/json"):
         body = json.loads(body)
