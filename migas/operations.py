@@ -3,7 +3,6 @@ Create queries and mutations to be sent to the graphql endpoint.
 """
 import sys
 import typing
-from http.client import HTTPResponse
 
 from migas.config import Config, logger, telemetry_enabled
 from migas.request import request
@@ -162,11 +161,12 @@ def _formulate_query(params: dict, template: OperationTemplate) -> str:
     return query
 
 
-def _filter_response(response: HTTPResponse, operation: str, fallback: dict):
-    res = response.get("data")
-    # success
-    if isinstance(res, dict):
-        return res.get(operation, fallback)
+def _filter_response(response: typing.Union[dict, str], operation: str, fallback: dict):
+    if isinstance(response, dict):
+        res = response.get("data")
+        # success
+        if isinstance(res, dict):
+            return res.get(operation, fallback)
 
     # Otherwise data is None, return fallback response with error reported
     try:
