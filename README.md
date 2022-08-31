@@ -4,7 +4,7 @@ A Python package to communicate with a migas server.
 
 ## About
 
-`migas` (*mee-gahs*) is a Python client to facilitate communication with a [`migas` server](https://github.com/mgxd/migas-server).
+`migas` (*mee-gahs*) is a Python client to facilitate communication with a [`migas` server](https://github.com/nipreps/migas-server).
 
 
 ## Usage
@@ -42,7 +42,7 @@ The server will attempt to return version information about the project.
 <summary>add_project example</summary>
 
 ```python
->>> add_project('mgxd/migas-py', '0.0.1')
+>>> add_project('nipreps/migas-py', '0.0.1')
 {'bad_versions': [],
  'cached': True,
  'latest_version': '0.0.4',
@@ -62,7 +62,7 @@ If no end date is specified, the current datetime is used.
 <summary>get_usage example</summary>
 
 ```python
->>> get_usage('mgxd/migas-py', '2022-07-01')
+>>> get_usage('nipreps/migas-py', '2022-07-01')
 {'hits': 7, 'message': '', 'unique': False, 'success': True}
 ```
 

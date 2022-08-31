@@ -3,7 +3,7 @@ import pytest
 from migas import __version__, setup
 from migas.operations import add_project, get_usage
 
-test_project = 'mgxd/migas-py'
+test_project = 'nipreps/migas-py'
 
 
 def future() -> str:
