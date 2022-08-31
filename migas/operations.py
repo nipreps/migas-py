@@ -85,6 +85,9 @@ addProject: OperationTemplate = {
         "is_ci": '{}',
         # optional
         "status": "{}",
+        "status_desc": '"{}"',
+        "error_type": '"{}"',
+        "error_desc": '"{}"',
         "user_id": '"{}"',
         "session_id": '"{}"',
         "container": "{}",
