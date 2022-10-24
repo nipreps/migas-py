@@ -10,7 +10,7 @@ from tempfile import gettempdir
 
 from .utils import compile_info
 
-DEFAULT_ENDPOINT = 'https://migas.herokuapp.com/graphql'
+DEFAULT_ENDPOINT = 'https://migas.nipreps.org/graphql'
 DEFAULT_CONFIG_FILE_FMT = str(Path(gettempdir()) / 'migas-{pid}.json').format
 
 # TODO: 3.10 - Replace with | operator
