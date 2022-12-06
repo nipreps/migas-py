@@ -95,6 +95,8 @@ jobs:
         path: 'migas-server'
     - name: Start up local server
       run: MIGAS_BYPASS_RATE_LIMIT=1 docker compose -f migas-server/docker-compose.yml up -d
+    - name: Verify server is available
+      run: docker port migas-server
     - name: Run tests
       run: python -m pytest -sv --doctest-modules migas
     - name: Stop local server
