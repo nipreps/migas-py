@@ -1,15 +1,22 @@
+from datetime import datetime as dt
+from datetime import timedelta
+from datetime import timezone as tz
+import time
+
 import pytest
 
 from migas import __version__, setup
 from migas.operations import add_project, get_usage
 
+from .utils import do_server_tests
+
+# skip all tests in module if server is not available
+pytestmark = pytest.mark.skipif(not do_server_tests, reason="Local server not found")
+
 test_project = 'nipreps/migas-py'
-
-
-def future() -> str:
-    from datetime import datetime, timedelta
-
-    return (datetime.utcnow() + timedelta(days=2)).strftime('%Y-%m-%d')
+today = dt.now(tz.utc)
+future = (today + timedelta(days=2)).strftime('%Y-%m-%d')
+today = today.strftime('%Y-%m-%d')
 
 
 @pytest.fixture(scope='module', autouse=True)
@@ -18,8 +25,13 @@ def setup_migas(endpoint):
     setup(endpoint=endpoint)
 
 
-def test_add_project():
+def test_operations():
+    _test_add_project()
+    # add delay to ensure server has updated
+    time.sleep(2)
+    _test_get_usage()
 
+def _test_add_project():
     res = add_project(test_project, __version__)
     assert res['success'] is True
     latest = res['latest_version']
@@ -37,18 +49,22 @@ def test_add_project():
     assert res['success'] is False
     assert res['latest_version'] is None
 
-
-def test_get_usage():
-    y2k = '2000-01-01'
-    res = get_usage(test_project, start=y2k)
+def _test_get_usage():
+    """This test requires `_test_add_project()` to be run before."""
+    res = get_usage(test_project, start=today)
     assert res['success'] is True
     all_usage = res['hits']
-    assert res['hits'] > 0
+    assert all_usage > 0
 
-    res = get_usage(test_project, start=y2k, unique=True)
+    res = get_usage(test_project, start=today, unique=True)
     assert res['success'] is True
     assert all_usage >= res['hits'] > 0
 
-    res = get_usage(test_project, start=future())
+    res = get_usage(test_project, start=future)
+    assert res['success'] is True
+    assert res['hits'] == 0
+
+    # checking a project that is not tracked will lead to a failure
+    res = get_usage('my/madeup-project', start=today)
     assert res['success'] is False
     assert res['hits'] == 0
