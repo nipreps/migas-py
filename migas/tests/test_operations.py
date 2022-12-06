@@ -6,6 +6,20 @@ from migas.operations import add_project, get_usage
 test_project = 'nipreps/migas-py'
 
 
+def _local_server_up() -> bool:
+    """Checks if the server is locally available."""
+    import requests
+
+    try:
+        res = requests.get('http://localhost:8000/', timeout=0.5)
+        assert res.headers.get('x-backend-server') == 'migas'
+    except Exception:
+        return False
+    return True
+
+pytestmark = pytest.mark.skipif(not _local_server_up(), reason="Local server not found")
+
+
 def future() -> str:
     from datetime import datetime, timedelta
 
@@ -19,7 +33,6 @@ def setup_migas(endpoint):
 
 
 def test_add_project():
-
     res = add_project(test_project, __version__)
     assert res['success'] is True
     latest = res['latest_version']
@@ -39,13 +52,12 @@ def test_add_project():
 
 
 def test_get_usage():
-    y2k = '2000-01-01'
-    res = get_usage(test_project, start=y2k)
+    res = get_usage(test_project)
     assert res['success'] is True
     all_usage = res['hits']
     assert res['hits'] > 0
 
-    res = get_usage(test_project, start=y2k, unique=True)
+    res = get_usage(test_project, unique=True)
     assert res['success'] is True
     assert all_usage >= res['hits'] > 0
 
