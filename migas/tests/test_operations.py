@@ -1,9 +1,12 @@
-from datetime import datetime as dt, timezone as tz, timedelta
+from datetime import datetime as dt
+from datetime import timedelta
+from datetime import timezone as tz
 
 import pytest
 
 from migas import __version__, setup
 from migas.operations import add_project, get_usage
+
 from .utils import do_server_tests
 
 # skip all tests in module if server is not available
@@ -51,5 +54,10 @@ def test_get_usage():
     assert all_usage >= res['hits'] > 0
 
     res = get_usage(test_project, start=future)
+    assert res['success'] is True
+    assert res['hits'] == 0
+
+    # checking a project that is not tracked will lead to a failure
+    res = get_usage('my/madeup-project', start=today)
     assert res['success'] is False
     assert res['hits'] == 0

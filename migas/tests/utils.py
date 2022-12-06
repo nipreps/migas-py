@@ -9,4 +9,5 @@ def _check_server_available() -> bool:
         return False
     return True
 
+
 do_server_tests = _check_server_available()
