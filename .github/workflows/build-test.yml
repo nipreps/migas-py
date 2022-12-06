@@ -47,7 +47,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.7, 3.8, 3.9, '3.10']
+        python-version: ['3.7', '3.8', '3.9', '3.10']
         install: [repo]
         pip-flags: ['', '--pre']
         include:
@@ -89,8 +89,16 @@ jobs:
         echo "ARCHIVE=$ARCHIVE" >> $GITHUB_ENV
     - name: Install package and test dependencies
       run: python -m pip install $PIP_FLAGS $ARCHIVE[test]
+    - uses: actions/checkout@v3
+      with:
+        repository: 'nipreps/migas-server'
+        path: 'migas-server'
+    - name: Start up local server
+      run: docker compose -f migas-server/docker-compose.yml up -d
     - name: Run tests
       run: python -m pytest -sv --doctest-modules migas
+    - name: Stop local server
+      run: docker compose -f migas-server/docker-compose.yml down
 
   release:
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
