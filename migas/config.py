@@ -118,12 +118,18 @@ class Config:
         if cls._pid is None:
             cls._pid = os.getpid()
         cls.endpoint = endpoint or DEFAULT_ENDPOINT
+        # initialize kwargs first
+        for param, val in kwargs.items():
+            if hasattr(cls, param):
+                setattr(cls, param, val)
+
         if user_id is not None or cls.user_id is None:
             try:
                 uuid.UUID(user_id)
                 cls.user_id = user_id
             except Exception:
-                cls.user_id = gen_uuid()
+                cls.user_id = gen_uuid(container=cls.container)
+                print(f"Created USER ID <{cls.user_id}>")
         # Do not set automatically, leave to developers
         if session_id is not None:
             try:
@@ -131,10 +137,6 @@ class Config:
                 cls.session_id = session_id
             except Exception:
                 pass
-
-        for param, val in kwargs.items():
-            if hasattr(cls, param):
-                setattr(cls, param, val)
 
     @classmethod
     @suppress_errors
@@ -229,7 +231,7 @@ def _try_load(filename) -> bool:
     return False
 
 
-def gen_uuid(uuid_factory: str = "safe") -> str:
+def gen_uuid(uuid_factory: str = "safe", container: typing.Optional[str] = None) -> str:
     """
     Generate a RFC 4122 UUID.
 
@@ -242,26 +244,51 @@ def gen_uuid(uuid_factory: str = "safe") -> str:
     - HPCs where HOSTNAME envvar is not set
     - Docker images where previous config is unavailable
     """
+    in_docker = container == 'docker'
     # TODO: 3.10 - Replace with match/case
     if uuid_factory == "safe":
-        return _safe_uuid_factory()
+        return _safe_uuid_factory(in_docker)
     elif uuid_factory == "random":
         return str(uuid.uuid4())
     raise NotImplementedError
 
 
-def _safe_uuid_factory() -> str:
+def _safe_uuid_factory(in_docker: bool = False) -> str:
     import getpass
     import socket
 
-    try:
-        user = getpass.getuser()
-    except KeyError:
-        # fails in cases of running docker containers as non-root
-        user = f'user-{os.getuid()}'
+    name = None
+    if in_docker:
+        name = _extract_container_id()
 
-    name = f"{user}@{os.getenv('HOSTNAME', socket.gethostname())}"
+    if not name:
+        try:
+            user = getpass.getuser()
+        except KeyError:
+            # fails in cases of running docker containers as non-root
+            user = f'user-{os.getuid()}'
+
+        name = f"{user}@{os.getenv('HOSTNAME', socket.gethostname())}"
     return str(uuid.uuid3(uuid.NAMESPACE_DNS, name))
 
+
+def _extract_container_id() -> typing.Optional[str]:
+    """
+    Query Docker mountinfo for persistent ID across runs.
+
+    This ID will only remain the same between invocations of the same container.
+    """
+    import re
+
+    docker_id = None
+    mountinfo = Path("/proc/self/mountinfo")
+    if not mountinfo.exists():
+        return
+
+    txt = mountinfo.read_text()
+    m = re.findall(r"(?<=/docker/overlay2/l/)\w*", txt)
+    if len(m) >= 2:
+        docker_id = m[1]  # Second value remains consistent
+    return docker_id
 
 logger = _init_logger()
