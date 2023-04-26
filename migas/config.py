@@ -129,7 +129,7 @@ class Config:
                 cls.user_id = user_id
             except Exception:
                 cls.user_id = gen_uuid(container=cls.container)
-                print(f"Created USER ID <{cls.user_id}>")
+
         # Do not set automatically, leave to developers
         if session_id is not None:
             try:
