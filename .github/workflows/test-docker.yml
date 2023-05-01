@@ -1,0 +1,62 @@
+name: test-docker-id
+
+# on:
+#   pull_request:
+#     branches:
+#       - main
+
+
+jobs:
+  docker:
+    name: Docker
+    defaults:
+      run:
+        shell: bash --noprofile --norc -exo pipefail {0}
+    strategy:
+      fail-fast: false
+      matrix:
+        docker_version:
+          - "18.09"
+          - "19.03"
+          - "20.10"
+        docker_channel:
+          - stable
+          - test
+        os:
+          - ubuntu-20.04
+          - ubuntu-22.04
+          - ubuntu-latest
+          - macos-12
+        include:
+          - os: macos-latest
+            docker_channel: stable
+            docker_version: "20.10"
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: setup Docker
+        uses: docker-practice/actions-setup-docker@master
+        with:
+          docker_version: ${{ matrix.docker_version }}
+          docker_channel: ${{ matrix.docker_channel }}
+      - name: Check docker version
+        run: docker version
+      - name: Pull latest Python image
+        run: |
+          docker pull python:slim
+          docker pull python:3.10-slim
+      - name: Run test script
+        id: user_id
+        run: |
+          USER_ID=$(docker run --rm -v `pwd`:/tmp/migas --entrypoint=/tmp/migas/.maint/check-user.sh python:slim)
+          echo "USER_ID=$USER_ID" >> $GITHUB_OUTPUT
+      - name: Rerun and compare
+        run: |
+          NEW_ID=$(docker run --rm -v `pwd`:/tmp/migas --entrypoint=/tmp/migas/.maint/check-user.sh python:slim)
+          echo $NEW_ID
+          [[ "${{ steps.user_id.outputs.USER_ID }}" == "$NEW_ID" ]]
+      - name: Test with separate image
+        run:
+          NEW_ID=$(docker run --rm -v `pwd`:/tmp/migas --entrypoint=/tmp/migas/.maint/check-user.sh python:3.10-slim)
+          echo $NEW_ID
+          [[ "${{ steps.user_id.outputs.USER_ID }}" != "$NEW_ID" ]]
