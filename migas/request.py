@@ -56,7 +56,8 @@ def request(
     try:
         conn.request(method, purl.path, body=body, headers=headers)
         response = conn.getresponse()
-        body = _read_response(response, chunk_size)
+        encoding = response.headers.get('content-encoding')
+        body = _read_response(response, encoding, chunk_size)
     except TimeoutError:
         return TIMEOUT_RESPONSE
     except ConnectionError:
@@ -72,16 +73,15 @@ def request(
     finally:
         conn.close()
 
-    if not response.headers.get("X-Backend-Server"):
-        logger.warning("migas server is incorrectly configured.")
-
-    if response.headers.get("Content-Type").startswith("application/json"):
+    if body and response.headers.get("content-type").startswith("application/json"):
         body = json.loads(body)
 
+    if not response.headers.get("X-Backend-Server"):
+        logger.warning("migas server is incorrectly configured.")
     return response.status, body
 
 
-def _read_response(response: HTTPResponse, chunk_size: int = None) -> str:
+def _read_response(response: HTTPResponse, encoding: typing.Optional[str] = None, chunk_size: int = None) -> str:
     """
     Read and aggregate the response body.
 
@@ -94,4 +94,25 @@ def _read_response(response: HTTPResponse, chunk_size: int = None) -> str:
     while chunk:
         chunk = response.read(chunk_size)
         stream += chunk
+
+    if encoding:
+        stream = _decompress_stream(stream, encoding)
     return stream.decode()
+
+
+def _decompress_stream(stream: bytes, encoding: str) -> bytes:
+    """
+    Decompress the compressed response byte stream.
+    """
+    # TODO: 3.10 - replace with match
+    if encoding == 'gzip':
+        import gzip
+
+        decomp = gzip.decompress(stream)
+    elif encoding == 'deflate':
+        import zlib
+
+        decomp = zlib.decompress(stream)
+    else:
+        raise NotImplementedError(f'Cannot decode response with encoding "{encoding}>"')
+    return decomp
