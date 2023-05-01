@@ -96,7 +96,7 @@ jobs:
       env:
         MIGAS_SERVER_NAME: app
     - name: Run tests
-      run: python -m pytest -sv --doctest-modules migas
+      run: python -m pytest -sv --doctest-modules --pyargs migas
     - name: Stop local server
       run: docker compose -f migas-server/docker-compose.yml down
 
