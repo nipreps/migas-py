@@ -13,29 +13,29 @@ on:
     # 7am EST / 8am EDT Mondays
     - cron: '0 12 * * 1'
 
+concurrency:
+  group: python-${{ github.ref }}
+  cancel-in-progress: true
+
+
 jobs:
   build:
     if: "!contains(github.event.head_commit.message, '[skip ci]')"
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.10"]
     steps:
     - uses: actions/checkout@v3
       with:
         fetch-depth: 0
-    - name: Set up Python ${{ matrix.python-version }}
+    - name: Set up Python 3
       uses: actions/setup-python@v4
       with:
-        python-version: ${{ matrix.python-version }}
+        python-version: 3
     - name: Check python version and install build
-      run: |
-        python --version
-        python -m pip install -U build twine
+      run: python --version
     - name: Build migas
-      run: python -m build
+      run: pipx run build
     - name: Check distributions
-      run: twine check dist/*
+      run: pipx run twine check dist/*
     - uses: actions/upload-artifact@v3
       with:
         name: dist
@@ -47,24 +47,20 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ['3.7', '3.8', '3.9', '3.10']
+        python-version: ['3.7', '3.8', '3.9', '3.10', '3.11']
         install: [repo]
-        pip-flags: ['', '--pre']
         include:
-          - python-version: 3.9
+          - python-version: '3.11'
             install: sdist
-            pip-flags: ''
-          - python-version: 3.9
+          - python-version: '3.11'
             install: wheel
-            pip-flags: ''
-          - python-version: 3.9
+          - python-version: '3.9'
             install: editable
-            pip-flags: ''
     env:
       INSTALL_TYPE: ${{ matrix.install }}
-      PIP_FLAGS: ${{ matrix.pip-flags }}
     steps:
     - uses: actions/checkout@v3
+      if: matrix.install == 'repo' || matrix.install == 'editable'
       with:
         fetch-depth: 0
     - name: Set up Python ${{ matrix.python-version }}
@@ -88,7 +84,7 @@ jobs:
         fi
         echo "ARCHIVE=$ARCHIVE" >> $GITHUB_ENV
     - name: Install package and test dependencies
-      run: python -m pip install $PIP_FLAGS $ARCHIVE[test]
+      run: python -m pip install $ARCHIVE[test]
     - uses: actions/checkout@v3
       with:
         repository: 'nipreps/migas-server'
@@ -96,7 +92,9 @@ jobs:
     - name: Start up local server
       run: MIGAS_BYPASS_RATE_LIMIT=1 docker compose -f migas-server/docker-compose.yml up -d
     - name: Verify server is available
-      run: docker port migas-server && sleep 10
+      run: docker port ${MIGAS_SERVER_NAME} && sleep 10
+      env:
+        MIGAS_SERVER_NAME: app
     - name: Run tests
       run: python -m pytest -sv --doctest-modules migas
     - name: Stop local server
@@ -106,21 +104,16 @@ jobs:
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
     needs: [build, test]
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.10"]
     steps:
     - uses: actions/checkout@v3
       with:
         fetch-depth: 0
-    - name: Set up Python ${{ matrix.python-version }}
+    - name: Set up Python 3
       uses: actions/setup-python@v4
       with:
-        python-version: ${{ matrix.python-version }}
+        python-version: 3
     - name: Verify python version
       run: python -V
-    - name: Install twine
-      run: python -m pip install twine
     - name: Fetch packaged build
       uses: actions/download-artifact@v3
       with:
