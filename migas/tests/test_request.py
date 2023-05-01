@@ -3,11 +3,16 @@ import pytest
 from migas.request import request
 
 GET_URL = 'https://httpbin.org/get'
+GET_COMPRESSED_URL = 'https://httpbingo.org/get'
 POST_URL = 'https://httpbin.org/post'
 
 
 @pytest.mark.parametrize(
-    'method,url,query', [('POST', POST_URL, 'mydata'), ('GET', GET_URL, None)]
+    'method,url,query', [
+        ('POST', POST_URL, 'mydata'),
+        ('GET', GET_URL, None),
+        ('GET',GET_COMPRESSED_URL, None)
+    ]
 )
 def test_request_get(method, url, query):
     status, res = request(url, query=query, method=method)
