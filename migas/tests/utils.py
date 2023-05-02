@@ -3,7 +3,7 @@ def _check_server_available() -> bool:
     import requests
 
     try:
-        res = requests.get('http://localhost:8000/', timeout=1)
+        res = requests.get('http://localhost:8080/', timeout=1)
     except Exception:
         print("Could not connect to server")
         return False
