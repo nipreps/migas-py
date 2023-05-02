@@ -2,14 +2,14 @@
 
 import json
 import os
-import typing
+from typing import Optional, Tuple, Union
 from http.client import HTTPConnection, HTTPResponse, HTTPSConnection
 from urllib.parse import urlparse
 
 from . import __version__
 from .config import logger
 
-ETResponse = typing.Tuple[int, typing.Union[dict, str]]  # status code, body
+ETResponse = Tuple[int, Union[dict, str]]  # status code, body
 
 DEFAULT_TIMEOUT = 3
 TIMEOUT_RESPONSE = (
@@ -81,7 +81,11 @@ def request(
     return response.status, body
 
 
-def _read_response(response: HTTPResponse, encoding: typing.Optional[str] = None, chunk_size: int = None) -> str:
+def _read_response(
+    response: HTTPResponse,
+    encoding: Optional[str] = None,
+    chunk_size: Optional[int] = None
+) -> str:
     """
     Read and aggregate the response body.
 
