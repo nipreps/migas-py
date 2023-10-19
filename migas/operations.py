@@ -1,23 +1,18 @@
 """
 Create queries and mutations to be sent to the graphql endpoint.
 """
-import sys
-import typing
+from __future__ import annotations
+
+import typing as ty
 
 from migas.config import Config, logger, telemetry_enabled
 from migas.request import request
-
-if sys.version_info[:2] >= (3, 8):
-    from typing import TypedDict
-else:
-    # TODO: 3.8 - Remove backport
-    from typing_extensions import TypedDict
 
 
 DEFAULT_ERROR = '[migas-py] An error occurred.'
 
 
-class OperationTemplate(TypedDict):
+class OperationTemplate(ty.TypedDict):
     operation: str
     args: dict
     response: dict
@@ -135,7 +130,7 @@ def add_project(
     return res
 
 
-def _introspec(func: typing.Callable, func_locals: dict) -> dict:
+def _introspec(func: ty.Callable, func_locals: dict) -> dict:
     """Inspect a function and return all parameters (not defaults)."""
     import inspect
 
@@ -164,7 +159,7 @@ def _formulate_query(params: dict, template: OperationTemplate) -> str:
     return query
 
 
-def _filter_response(response: typing.Union[dict, str], operation: str, fallback: dict):
+def _filter_response(response: dict | str, operation: str, fallback: dict):
     if isinstance(response, dict):
         res = response.get("data")
         # success

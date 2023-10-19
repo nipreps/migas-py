@@ -8,14 +8,18 @@ on:
     branches:
       - main
 
+defaults:
+  run:
+    shell: bash
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   docker:
     if: "contains(github.event.commits[0].message, '[docker test]')"
     name: Docker tests
-    defaults:
-      run:
-        shell: bash --noprofile --norc -exo pipefail {0}
     strategy:
       fail-fast: false
       matrix:
@@ -37,7 +41,7 @@ jobs:
             docker_version: "20.10"
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: setup Docker
         uses: docker-practice/actions-setup-docker@master
         with:

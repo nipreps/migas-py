@@ -5,7 +5,7 @@ import time
 
 import pytest
 
-from migas import __version__, setup
+from migas import __version__
 from migas.operations import add_project, get_usage
 
 from .utils import do_server_tests
@@ -19,13 +19,7 @@ future = (today + timedelta(days=2)).strftime('%Y-%m-%d')
 today = today.strftime('%Y-%m-%d')
 
 
-@pytest.fixture(scope='module', autouse=True)
-def setup_migas(endpoint):
-    """Ensure migas is configured to communicate with the staging app."""
-    setup(endpoint=endpoint)
-
-
-def test_operations():
+def test_operations(setup_migas):
     _test_add_project()
     # add delay to ensure server has updated
     time.sleep(2)
