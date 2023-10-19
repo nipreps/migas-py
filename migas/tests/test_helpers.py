@@ -3,7 +3,6 @@ import sys
 import pytest
 
 import migas
-from migas.tests.utils import patched_add_project
 
 
 class CustomException(Exception):
@@ -27,17 +26,16 @@ def sample_error_func(etype: Exception, evalue: str, etb: str):
     (None, KeyError, 'F', 'KeyError: \'foo\''),
     ({'CustomException': sample_error_func}, CustomException, 'F', 'Custom Error!'),
 ])
-def test_final_breadcrumb(setup_migas, monkeypatch, error_funcs, error, status, error_desc):
+def test_inspect_error(monkeypatch, error_funcs, error, status, error_desc):
 
     # do not actually call the server
-    monkeypatch.setattr(migas.operations, 'add_project', patched_add_project)
     if error is not None:
         monkeypatch.setattr(sys, 'last_type', error, raising=False)
         monkeypatch.setattr(sys, 'last_value', error_desc, raising=False)
         monkeypatch.setattr(sys, 'last_traceback', 'Traceback...', raising=False)
 
-    from migas.helpers import _final_breadcrumb
-    res = _final_breadcrumb('nipreps/migas-py', '0.0.1', error_funcs)
+    from migas.helpers import _inspect_error
+    res = _inspect_error(error_funcs)
 
     assert res.get('status') == status
     if error_desc is not None:
