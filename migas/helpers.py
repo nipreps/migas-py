@@ -9,8 +9,12 @@ from migas.operations import add_project
 def track_exit(project: str, version: str, error_funcs: dict | None = None) -> None:
     atexit.register(_final_breadcrumb, project, version, error_funcs)
 
+def _final_breadcrumb(project: str, version: str, error_funcs: dict | None = None) -> dict:
+    kwargs = _inspect_error(error_funcs)
+    return add_project(project, version, **kwargs)
 
-def _final_breadcrumb(name, version, error_funcs=None) -> dict:
+
+def _inspect_error(error_funcs: dict | None) -> dict:
     etype, evalue, etb = None, None, None
 
     # Python 3.12, new method
@@ -50,5 +54,4 @@ def _final_breadcrumb(name, version, error_funcs=None) -> dict:
             'status_desc': 'Completed',
         }
 
-    # Final ping
-    return add_project(name, version, **kwargs)
+    return kwargs
