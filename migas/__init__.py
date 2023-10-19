@@ -3,6 +3,7 @@ from . import _version
 __version__ = _version.get_versions()['version']
 
 from .config import print_config, setup
+from .helpers import track_exit
 from .operations import add_project, get_usage
 
 __all__ = (
@@ -11,4 +12,6 @@ __all__ = (
     "get_usage",
     "print_config",
     "setup",
+    "track_exit",
 )
+
