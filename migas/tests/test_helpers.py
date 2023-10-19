@@ -27,7 +27,7 @@ def sample_error_func(etype: Exception, evalue: str, etb: str):
     (None, KeyError, 'F', 'KeyError: \'foo\''),
     ({'CustomException': sample_error_func}, CustomException, 'F', 'Custom Error!'),
 ])
-def test_final_breadcrumb(monkeypatch, error_funcs, error, status, error_desc):
+def test_final_breadcrumb(setup_migas, monkeypatch, error_funcs, error, status, error_desc):
 
     # do not actually call the server
     monkeypatch.setattr(migas.operations, 'add_project', patched_add_project)
