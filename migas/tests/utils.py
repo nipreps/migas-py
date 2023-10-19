@@ -12,8 +12,4 @@ def _check_server_available() -> bool:
         return False
     return True
 
-
-def patched_add_project(project: str, project_version: str, **kwargs) -> dict:
-    return kwargs
-
 do_server_tests = _check_server_available()

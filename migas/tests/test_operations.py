@@ -25,7 +25,7 @@ def test_operations(setup_migas):
     time.sleep(2)
     _test_get_usage()
 
-def _test_add_project(setup_migas):
+def _test_add_project():
     res = add_project(test_project, __version__)
     assert res['success'] is True
     latest = res['latest_version']
@@ -43,7 +43,7 @@ def _test_add_project(setup_migas):
     assert res['success'] is False
     assert res['latest_version'] is None
 
-def _test_get_usage(setup_migas):
+def _test_get_usage():
     """This test requires `_test_add_project()` to be run before."""
     res = get_usage(test_project, start=today)
     assert res['success'] is True
