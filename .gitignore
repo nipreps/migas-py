@@ -8,3 +8,5 @@ logs/
 .pytest_cache/
 dump.rdb
 mounts/
+_version.py
+

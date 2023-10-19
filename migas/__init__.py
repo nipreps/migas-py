@@ -1,6 +1,7 @@
-from . import _version
-
-__version__ = _version.get_versions()['version']
+try:
+    from ._version import __version__
+except ImportError:
+    __version__ = "0+unknown"
 
 from .config import print_config, setup
 from .helpers import track_exit
