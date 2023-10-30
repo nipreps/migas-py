@@ -6,11 +6,17 @@ import sys
 from migas.operations import add_project
 
 
-def track_exit(project: str, version: str, error_funcs: dict | None = None) -> None:
-    atexit.register(_final_breadcrumb, project, version, error_funcs)
+def track_exit(project: str, version: str, error_funcs: dict | None = None, **kwargs) -> None:
+    atexit.register(_final_breadcrumb, project, version, error_funcs, **kwargs)
 
-def _final_breadcrumb(project: str, version: str, error_funcs: dict | None = None) -> dict:
-    kwargs = _inspect_error(error_funcs)
+def _final_breadcrumb(
+    project: str,
+    version: str,
+    error_funcs: dict | None = None,
+    **ping_kwargs,
+) -> dict:
+    status = _inspect_error(error_funcs)
+    kwargs = {**ping_kwargs, **status}
     return add_project(project, version, **kwargs)
 
 

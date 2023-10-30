@@ -68,6 +68,12 @@ If no end date is specified, the current datetime is used.
 
 </details>
 
+
+#### migas.track_exit()
+
+Register an exit function to send a final ping upon termination of the Python interpretter.
+The inputs are equivalent to `add_project()`.
+
 ## User Control
 
 `migas` can controlled by the following environmental variables:
