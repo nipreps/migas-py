@@ -40,7 +40,7 @@ def request(
     conn = Connection(purl.netloc, timeout=timeout)
     headers = {
         'User-Agent': f'migas-client/{__version__}',
-        'Accept-Encoding': 'gzip, deflate, br',
+        'Accept-Encoding': 'gzip, deflate',
         'Accept': '*/*',
     }
     body = None
