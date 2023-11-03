@@ -10,8 +10,9 @@ import warnings
 from migas.config import Config, logger, telemetry_enabled
 from migas.request import request
 
-free = '"{}"'  # free text fields
-fixed = '{}'  # fixed text fields
+FREE = '"{}"'  # FREE text fields
+FIXED = '{}'  # FIXED text fields
+ERROR = '[migas-py] An error occurred.'
 
 
 @dataclasses.dataclass
@@ -43,33 +44,36 @@ class AddBreadcrumb(Operation):
     operation_type = "mutation"
     operation_name = "add_breadcrumb"
     query_args = {
-        "project": free,
-        "project_version": free,
-        "language": free,
-        "language_version": free,
+        "project": FREE,
+        "project_version": FREE,
+        "language": FREE,
+        "language_version": FREE,
         "ctx": {
-            "session_id": free,
-            "user_id": free,
-            "user_type": fixed,
-            "platform": free,
-            "container": fixed,
-            "is_ci": fixed,
+            "session_id": FREE,
+            "user_id": FREE,
+            "user_type": FIXED,
+            "platform": FREE,
+            "container": FIXED,
+            "is_ci": FIXED,
         },
         "proc": {
-            "status": fixed,
-            "status_desc": free,
-            "error_type": free,
-            "error_desc": free,
+            "status": FIXED,
+            "status_desc": FREE,
+            "error_type": FREE,
+            "error_desc": FREE,
         },
     }
     _fingerprint = True
 
+
 @telemetry_enabled
 def add_breadcrumb(project: str, project_version: str, **kwargs) -> dict:
-    query = AddBreadcrumb.generate_query(project=project, project_version=project_version, **kwargs)
+    query = AddBreadcrumb.generate_query(
+        project=project, project_version=project_version, **kwargs
+    )
     logger.debug(query)
     _, response = request(Config.endpoint, query=query)
-    res = _filter_response(response, AddBreadcrumb.operation_name)
+    res = _filter_response(response, AddBreadcrumb.operation_name, AddBreadcrumb._error_response)
     return res
 
 
@@ -78,24 +82,30 @@ class AddProject(Operation):
     operation_name = "add_project"
     query_args = {
         "p": {
-            "project": free,
-            "project_version": free,
-            "language": free,
-            "language_version": free,
-            "is_ci": fixed,
-            "status": fixed,
-            "status_desc": free,
-            "error_type": free,
-            "error_desc": free,
-            "user_id": free,
-            "session_id": free,
-            "container": fixed,
-            "user_type": fixed,
-            "platform": free,
-            "arguments": free,
+            "project": FREE,
+            "project_version": FREE,
+            "language": FREE,
+            "language_version": FREE,
+            "is_ci": FIXED,
+            "status": FIXED,
+            "status_desc": FREE,
+            "error_type": FREE,
+            "error_desc": FREE,
+            "user_id": FREE,
+            "session_id": FREE,
+            "container": FIXED,
+            "user_type": FIXED,
+            "platform": FREE,
+            "arguments": FREE,
         },
     }
     _fingerprint = True
+    _error_response = {
+        "success": False,
+        "latest_version": None,
+        "message": ERROR,
+    }
+
 
 @telemetry_enabled
 def add_project(project: str, project_version: str, **kwargs) -> dict:
@@ -119,32 +129,33 @@ def add_project(project: str, project_version: str, **kwargs) -> dict:
     warnings.warn(
         "This method has been separated into `add_breadcrumb` and `check_project` methods.",
         DeprecationWarning,
-        stacklevel=2
+        stacklevel=2,
     )
     query = AddProject.generate_query(project=project, project_version=project_version, **kwargs)
     logger.debug(query)
     _, response = request(Config.endpoint, query=query)
-    res = _filter_response(response, AddProject.operation_name, {})
+    res = _filter_response(response, AddProject.operation_name, AddProject._error_response)
     return res
+
 
 class CheckProject(Operation):
     operation_type = "query"
     operation_name = "check_project"
     query_args = {
-        "project": free,
-        "project_version": free,
-        "language": free,
-        "language_version": free,
-        "is_ci": fixed,
-        "status": fixed,
-        "status_desc": free,
-        "error_type": free,
-        "error_desc": free,
-        "user_id": free,
-        "session_id": free,
-        "container": fixed,
-        "platform": free,
-        "arguments": free,
+        "project": FREE,
+        "project_version": FREE,
+        "language": FREE,
+        "language_version": FREE,
+        "is_ci": FIXED,
+        "status": FIXED,
+        "status_desc": FREE,
+        "error_type": FREE,
+        "error_desc": FREE,
+        "user_id": FREE,
+        "session_id": FREE,
+        "container": FIXED,
+        "platform": FREE,
+        "arguments": FREE,
     }
 
 
@@ -157,25 +168,24 @@ def check_project(project: str, project_version: str, **kwargs) -> dict:
     return res
 
 
-
 class GetUsage(Operation):
     operation_type = 'query'
     operation_name = 'get_usage'
     query_args = {
-        "project": free,
-        "start": free,
-        "end": free,
-        "unique": fixed,
+        "project": FREE,
+        "start": FREE,
+        "end": FREE,
+        "unique": FIXED,
     }
+
 
 @telemetry_enabled
 def get_usage(project: str, start: str, **kwargs) -> dict:
-        query = GetUsage.generate_query(project=project, start=start, **kwargs)
-        logger.debug(query)
-        _, response = request(Config.endpoint, query=query)
-        res = _filter_response(response, GetUsage.operation_name)
-        return res
-
+    query = GetUsage.generate_query(project=project, start=start, **kwargs)
+    logger.debug(query)
+    _, response = request(Config.endpoint, query=query)
+    res = _filter_response(response, GetUsage.operation_name)
+    return res
 
 
 def _introspec(func: ty.Callable, func_locals: dict) -> dict:
@@ -194,7 +204,7 @@ def _filter_response(response: dict | str, operation: str, fallback: dict | None
     if not fallback:
         fallback = {
             'success': False,
-            'message': '[migas-py] An error occurred.',
+            'message': ERROR,
         }
 
     if isinstance(response, dict):
