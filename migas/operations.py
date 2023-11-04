@@ -22,12 +22,13 @@ class Operation:
     query_args: dict
     selections: tuple | None = None
     query: str = ''
-    _fingerprint: bool = False
+    fingerprint: bool = False
+    error_response: dict | None = None
 
     @classmethod
     def generate_query(cls, *args, **kwargs) -> str:
         parameters = _introspec(cls.generate_query, locals())
-        params = Config.populate() if cls._fingerprint else {}
+        params = Config.populate() if cls.fingerprint else {}
         params = {**params, **kwargs, **parameters}
         query = cls._construct_query(params)
         return query
@@ -63,7 +64,7 @@ class AddBreadcrumb(Operation):
             "error_desc": FREE,
         },
     }
-    _fingerprint = True
+    fingerprint = True
 
 
 @telemetry_enabled
@@ -73,7 +74,7 @@ def add_breadcrumb(project: str, project_version: str, **kwargs) -> dict:
     )
     logger.debug(query)
     _, response = request(Config.endpoint, query=query)
-    res = _filter_response(response, AddBreadcrumb.operation_name, AddBreadcrumb._error_response)
+    res = _filter_response(response, AddBreadcrumb.operation_name, AddBreadcrumb.error_response)
     return res
 
 
@@ -99,8 +100,8 @@ class AddProject(Operation):
             "arguments": FREE,
         },
     }
-    _fingerprint = True
-    _error_response = {
+    fingerprint = True
+    error_response = {
         "success": False,
         "latest_version": None,
         "message": ERROR,
@@ -134,7 +135,7 @@ def add_project(project: str, project_version: str, **kwargs) -> dict:
     query = AddProject.generate_query(project=project, project_version=project_version, **kwargs)
     logger.debug(query)
     _, response = request(Config.endpoint, query=query)
-    res = _filter_response(response, AddProject.operation_name, AddProject._error_response)
+    res = _filter_response(response, AddProject.operation_name, AddProject.error_response)
     return res
 
 
