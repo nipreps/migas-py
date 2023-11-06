@@ -3,10 +3,16 @@ from datetime import timedelta
 from datetime import timezone as tz
 import time
 
+from looseversion import LooseVersion
 import pytest
 
 from migas import __version__
-from migas.operations import add_breadcrumb, add_project, get_usage
+from migas.operations import (
+    add_breadcrumb,
+    add_project,
+    check_project,
+    get_usage,
+)
 
 from .utils import do_server_tests
 
@@ -75,3 +81,14 @@ def test_add_project(setup_migas):
     res = add_project(test_project, __version__, status='wtf')
     assert res['success'] is False
     assert res['latest_version'] is None
+
+
+def test_check_project(setup_migas):
+    res = check_project(test_project, __version__)
+    assert res['success'] is True
+    assert res['latest']
+    v = LooseVersion(__version__)
+    latest = LooseVersion(res['latest'])
+    assert v >= latest
+    assert res['flagged'] is False
+    assert res['message'] == ''
