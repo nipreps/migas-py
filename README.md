@@ -28,32 +28,58 @@ import migas; migas.setup(endpoint='your-endpoint')
 
 `migas` includes the following functions to communicate with the telemetry server:
 
-#### migas.add_project()
-
+#### migas.add_breadcrumb() {#addbreadcrumb}
 Send a breadcrumb with usage information to the server.
-Usage information includes:
- - application
- - application version
- - application status
 
-The server will attempt to return version information about the project.
+##### Mandatory
+- `project` - application name
+- `project_version` - application version
+
+##### Optional
+- `language` (auto-detected)
+- `language_version` (auto-detected)
+- process:
+  - `status`
+  - `status_desc`
+  - `error_type`
+  - `error_desc`
+- context:
+  - `user_id` (auto-generated)
+  - `session_id`
+  - `user_type`
+  - `platform` (auto-detected)
+  - `container` (auto-detected)
+  - `is_ci` (auto-detected)
 
 <details>
-<summary>add_project example</summary>
+<summary>add_breadcrumb example</summary>
 
 ```python
->>> add_project('nipreps/migas-py', '0.0.1')
-{'bad_versions': [],
- 'cached': True,
- 'latest_version': '0.0.4',
- 'message': '',
- 'success': True}
+>>> add_breadcrumb('nipreps/migas-py', '0.0.1', status='R', status_desc='Finished long step')
+{'success': True}
 ```
 
 </details>
 
+#### migas.check_project() {#checkproject}
+Check a project version against later developments.
 
-#### migas.get_usage()
+##### Mandatory
+- `project`
+- `project_version`
+
+
+<details>
+<summary>check_project example</summary>
+
+```python
+>>> check_project('nipreps/migas-py', '0.0.1')
+{'success': True, 'flagged': False, 'latest': '0.4.0', 'message': ''}
+```
+
+</details>
+
+#### migas.get_usage() {#getusage}
 
 Check number of uses a `project` has received from a start date, and optionally an end date.
 If no end date is specified, the current datetime is used.
@@ -69,10 +95,11 @@ If no end date is specified, the current datetime is used.
 </details>
 
 
-#### migas.track_exit()
+#### migas.track_exit() {#trackexit}
 
 Register an exit function to send a final ping upon termination of the Python interpretter.
-The inputs are equivalent to `add_project()`.
+Useful when monitoring a process that may preemptively error.
+The inputs are equivalent to [`add_breadcrumb()`](#addbreadcrumb)
 
 ## User Control
 
