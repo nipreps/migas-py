@@ -3,10 +3,16 @@ from datetime import timedelta
 from datetime import timezone as tz
 import time
 
+from looseversion import LooseVersion
 import pytest
 
 from migas import __version__
-from migas.operations import add_project, get_usage
+from migas.operations import (
+    add_breadcrumb,
+    add_project,
+    check_project,
+    get_usage,
+)
 
 from .utils import do_server_tests
 
@@ -20,31 +26,25 @@ today = today.strftime('%Y-%m-%d')
 
 
 def test_operations(setup_migas):
-    _test_add_project()
+    _test_add_breakcrumb()
     # add delay to ensure server has updated
     time.sleep(2)
     _test_get_usage()
 
-def _test_add_project():
-    res = add_project(test_project, __version__)
+def _test_add_breakcrumb():
+    res = add_breadcrumb(test_project, __version__)
     assert res['success'] is True
-    latest = res['latest_version']
-    assert latest
 
     # ensure kwargs can be submitted
-    res = add_project(test_project, __version__, language='cpython', platform='win32')
+    res = add_breadcrumb(test_project, __version__, language='cpython', platform='win32')
     assert res['success'] is True
-    assert res['latest_version'] == latest
-    # should be cached since we just checked the version
-    assert res['cached'] is True
 
-    # illegal queries should fail
-    res = add_project(test_project, __version__, status='wtf')
+    # validation should happen instantly
+    res = add_breadcrumb(test_project, __version__, status='wtf')
     assert res['success'] is False
-    assert res['latest_version'] is None
 
 def _test_get_usage():
-    """This test requires `_test_add_project()` to be run before."""
+    """This test requires `_test_add_breadcrumb()` to be run before."""
     res = get_usage(test_project, start=today)
     assert res['success'] is True
     all_usage = res['hits']
@@ -62,3 +62,33 @@ def _test_get_usage():
     res = get_usage('my/madeup-project', start=today)
     assert res['success'] is False
     assert res['hits'] == 0
+
+
+def test_add_project(setup_migas):
+    res = add_project(test_project, __version__)
+    assert res['success'] is True
+    latest = res['latest_version']
+    assert latest
+
+    # ensure kwargs can be submitted
+    res = add_project(test_project, __version__, language='cpython', platform='win32')
+    assert res['success'] is True
+    assert res['latest_version'] == latest
+    # should be cached since we just checked the version
+    assert res['cached'] is True
+
+    # illegal queries should fail
+    res = add_project(test_project, __version__, status='wtf')
+    assert res['success'] is False
+    assert res['latest_version'] is None
+
+
+def test_check_project(setup_migas):
+    res = check_project(test_project, __version__)
+    assert res['success'] is True
+    assert res['latest']
+    v = LooseVersion(__version__)
+    latest = LooseVersion(res['latest'])
+    assert v >= latest
+    assert res['flagged'] is False
+    assert res['message'] == ''

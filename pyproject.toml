@@ -40,6 +40,7 @@ dev = [
 test = [
     "requests",
     "pytest",
+    "looseversion",
 ]
 
 #

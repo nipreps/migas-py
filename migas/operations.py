@@ -3,106 +3,117 @@ Create queries and mutations to be sent to the graphql endpoint.
 """
 from __future__ import annotations
 
+import dataclasses
 import typing as ty
+import warnings
 
 from migas.config import Config, logger, telemetry_enabled
 from migas.request import request
 
-
-DEFAULT_ERROR = '[migas-py] An error occurred.'
-
-
-class OperationTemplate(ty.TypedDict):
-    operation: str
-    args: dict
-    response: dict
+FREE = '"{}"'  # FREE text fields
+FIXED = '{}'  # FIXED text fields
+ERROR = '[migas-py] An error occurred.'
 
 
-getUsage: OperationTemplate = {
-    "operation": "query{get_usage($)}",
-    "args": {
-        # required
-        "project": '"{}"',
-        "start": '"{}"',
-        # optional
-        "end": '"{}"',
-        "unique": "{}",
-    },
-    "response": {
-        'success': False,
-        'hits': 0,
-        'message': DEFAULT_ERROR,
-    },
-}
+@dataclasses.dataclass
+class Operation:
+    operation_type: str
+    operation_name: str
+    query_args: dict
+    selections: tuple | None = None  # TODO: Add subfield selection support
+    query: str = ''
+    fingerprint: bool = False
+    error_response: dict | None = None
+
+    @classmethod
+    def generate_query(cls, *args, **kwargs) -> str:
+        parameters = _introspec(cls.generate_query, locals())
+        params = Config.populate() if cls.fingerprint else {}
+        params = {**params, **kwargs, **parameters}
+        query = cls._construct_query(params)
+        return query
+
+    @classmethod
+    def _construct_query(cls, params: dict) -> str:
+        """Construct the graphql query."""
+        query = _parse_format_params(params, cls.query_args)
+        cls.query = f'{cls.operation_type}{{{cls.operation_name}({query})'
+        if cls.selections:
+            cls.query += f'{{{",".join(f for f in cls.selections)}}}'
+        cls.query += '}'
+        return cls.query
+
+
+class AddBreadcrumb(Operation):
+    operation_type = "mutation"
+    operation_name = "add_breadcrumb"
+    query_args = {
+        "project": FREE,
+        "project_version": FREE,
+        "language": FREE,
+        "language_version": FREE,
+        "ctx": {
+            "session_id": FREE,
+            "user_id": FREE,
+            "user_type": FIXED,
+            "platform": FREE,
+            "container": FIXED,
+            "is_ci": FIXED,
+        },
+        "proc": {
+            "status": FIXED,
+            "status_desc": FREE,
+            "error_type": FREE,
+            "error_desc": FREE,
+        },
+    }
+    fingerprint = True
+    selections = ('success',)
 
 
 @telemetry_enabled
-def get_usage(
-    project: str,
-    start: str,
-    end: str = None,
-    unique: bool = False,
-) -> dict:
-    """
-    Query project usage.
-
-    This function requires a `project`, which is a string in the format of the GitHub
-    `{owner}/{repository}`, and the start date to collect information.
-
-    Additionally, an end date can be provided, or the current datetime will be used.
-
-    `start` and `end` can be in either of the following formats:
-        - YYYY-MM-DD
-        - YYYY-MM-DDTHH:MM:SSZ
-
-    If `unique` is set to `True`, aggregates multiple uses by the same user as a single use.
-
-    Returns
-    -------
-    A dictionary containing the number of hits a project received.
-    """
-    params = _introspec(get_usage, locals())
-    query = _formulate_query(params, getUsage)
+def add_breadcrumb(project: str, project_version: str, **kwargs) -> dict:
+    query = AddBreadcrumb.generate_query(
+        project=project, project_version=project_version, **kwargs
+    )
     logger.debug(query)
     _, response = request(Config.endpoint, query=query)
-    res = _filter_response(response, 'get_usage', getUsage["response"])
+    res = _filter_response(response, AddBreadcrumb.operation_name, AddBreadcrumb.error_response)
     return res
 
 
-addProject: OperationTemplate = {
-    "operation": "mutation{add_project(p:{$})}",
-    "args": {
-        # required
-        "project": '"{}"',
-        "project_version": '"{}"',
-        "language": '"{}"',
-        "language_version": '"{}"',
-        "is_ci": '{}',
-        # optional
-        "status": "{}",
-        "status_desc": '"{}"',
-        "error_type": '"{}"',
-        "error_desc": '"{}"',
-        "user_id": '"{}"',
-        "session_id": '"{}"',
-        "container": "{}",
-        "platform": '"{}"',
-        "arguments": '"{}"',
-    },
-    "response": {
-        'success': False,
-        'message': DEFAULT_ERROR,
-        'latest_version': None,
-    },
-}
+class AddProject(Operation):
+    operation_type = "mutation"
+    operation_name = "add_project"
+    query_args = {
+        "p": {
+            "project": FREE,
+            "project_version": FREE,
+            "language": FREE,
+            "language_version": FREE,
+            "is_ci": FIXED,
+            "status": FIXED,
+            "status_desc": FREE,
+            "error_type": FREE,
+            "error_desc": FREE,
+            "user_id": FREE,
+            "session_id": FREE,
+            "container": FIXED,
+            "user_type": FIXED,
+            "platform": FREE,
+            "arguments": FREE,
+        },
+    }
+    fingerprint = True
+    error_response = {
+        "success": False,
+        "latest_version": None,
+        "message": ERROR,
+    }
 
 
 @telemetry_enabled
-def add_project(
-    project: str,
-    project_version: str,
-    **kwargs,
-) -> dict:
+def add_project(project: str, project_version: str, **kwargs) -> dict:
     """
     Send project usage information to the telemetry server.
 
@@ -120,13 +131,66 @@ def add_project(
     A dictionary containing the latest released version of the project,
     as well as any messages sent by the developers.
     """
-    parameters = _introspec(add_project, locals())
-    # TODO: 3.9 - Replace with | operator
-    params = {**Config.populate(), **kwargs, **parameters}
-    query = _formulate_query(params, addProject)
+    warnings.warn(
+        "This method has been separated into `add_breadcrumb` and `check_project` methods.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    query = AddProject.generate_query(project=project, project_version=project_version, **kwargs)
     logger.debug(query)
     _, response = request(Config.endpoint, query=query)
-    res = _filter_response(response, 'add_project', addProject["response"])
+    res = _filter_response(response, AddProject.operation_name, AddProject.error_response)
+    return res
+
+
+class CheckProject(Operation):
+    operation_type = "query"
+    operation_name = "check_project"
+    query_args = {
+        "project": FREE,
+        "project_version": FREE,
+        "language": FREE,
+        "language_version": FREE,
+        "is_ci": FIXED,
+        "status": FIXED,
+        "status_desc": FREE,
+        "error_type": FREE,
+        "error_desc": FREE,
+        "user_id": FREE,
+        "session_id": FREE,
+        "container": FIXED,
+        "platform": FREE,
+        "arguments": FREE,
+    }
+    selections = ('success', 'flagged', 'latest', 'message')
+
+
+@telemetry_enabled
+def check_project(project: str, project_version: str, **kwargs) -> dict:
+    query = CheckProject.generate_query(project=project, project_version=project_version, **kwargs)
+    logger.debug(query)
+    _, response = request(Config.endpoint, query=query)
+    res = _filter_response(response, CheckProject.operation_name)
+    return res
+
+
+class GetUsage(Operation):
+    operation_type = 'query'
+    operation_name = 'get_usage'
+    query_args = {
+        "project": FREE,
+        "start": FREE,
+        "end": FREE,
+        "unique": FIXED,
+    }
+
+
+@telemetry_enabled
+def get_usage(project: str, start: str, **kwargs) -> dict:
+    query = GetUsage.generate_query(project=project, start=start, **kwargs)
+    logger.debug(query)
+    _, response = request(Config.endpoint, query=query)
+    res = _filter_response(response, GetUsage.operation_name)
     return res
 
 
@@ -142,24 +206,13 @@ def _introspec(func: ty.Callable, func_locals: dict) -> dict:
     }
 
 
-def _formulate_query(params: dict, template: OperationTemplate) -> str:
-    """Construct the graphql query."""
-    query_params = {}
-    for template_arg in template["args"]:
-        if template_arg in params:
-            value = params[template_arg]
-            if isinstance(value, bool):
-                # booleans must be properly formatted
-                value = str(value).lower()
-            query_params[template_arg] = template["args"][template_arg].format(value)
+def _filter_response(response: dict | str, operation: str, fallback: dict | None = None):
+    if not fallback:
+        fallback = {
+            'success': False,
+            'message': ERROR,
+        }
 
-    query = template["operation"].replace(
-        "$", ",".join([f"{x}:{y}" for x, y in query_params.items()])
-    )
-    return query
-
-
-def _filter_response(response: dict | str, operation: str, fallback: dict):
     if isinstance(response, dict):
         res = response.get("data")
         # success
@@ -171,3 +224,22 @@ def _filter_response(response: dict | str, operation: str, fallback: dict):
         fallback['message'] = response.get('errors')[0]['message']
     finally:
         return fallback
+
+
+def _parse_format_params(params: dict, query_args: dict) -> str:
+    query_inputs = []
+    vals = None
+
+    for qarg, qval in query_args.items():
+        if qarg in params:
+            val = params[qarg]
+            if isinstance(val, bool):
+                val = str(val).lower()
+            val = qval.format(val)
+            query_inputs.append(f'{qarg}:{val}')
+
+        elif isinstance(qval, dict):
+            vals = _parse_format_params(params, qval)
+            query_inputs.append(f'{qarg}:{{{vals}}}')
+
+    return ','.join(query_inputs)
