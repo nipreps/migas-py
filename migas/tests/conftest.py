@@ -13,3 +13,4 @@ def setup_migas():
     migas.setup(endpoint=TEST_ENDPOINT)
 
     assert migas.config.Config._is_setup
+    return migas.config.Config._is_setup

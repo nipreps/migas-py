@@ -112,7 +112,7 @@ def test_print_config(capsys):
 def test_logger(monkeypatch):
     logger = config.logger
     with monkeypatch.context() as m:
-        m.delenv("MIGAS_LOG_LEVEL")
+        m.delenv("MIGAS_LOG_LEVEL", raising=False)
         config._init_logger()
         assert logger.name == 'migas-py'
         assert logger.level == 30
