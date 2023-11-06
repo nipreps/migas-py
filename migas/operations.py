@@ -20,7 +20,7 @@ class Operation:
     operation_type: str
     operation_name: str
     query_args: dict
-    selections: tuple | None = None
+    selections: tuple | None = None  # TODO: Add subfield selection support
     query: str = ''
     fingerprint: bool = False
     error_response: dict | None = None
@@ -37,7 +37,10 @@ class Operation:
     def _construct_query(cls, params: dict) -> str:
         """Construct the graphql query."""
         query = _parse_format_params(params, cls.query_args)
-        cls.query = f'{cls.operation_type}{{{cls.operation_name}({query})}}'
+        cls.query = f'{cls.operation_type}{{{cls.operation_name}({query})'
+        if cls.selections:
+            cls.query += f'{{{",".join(f for f in cls.selections)}}}'
+        cls.query += '}'
         return cls.query
 
 
@@ -65,6 +68,7 @@ class AddBreadcrumb(Operation):
         },
     }
     fingerprint = True
+    selections = ('success',)
 
 
 @telemetry_enabled
@@ -158,6 +162,7 @@ class CheckProject(Operation):
         "platform": FREE,
         "arguments": FREE,
     }
+    selections = ('success', 'flagged', 'latest', 'message')
 
 
 @telemetry_enabled
