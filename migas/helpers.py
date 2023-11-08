@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import atexit
 import sys
+from traceback import format_exception_only
 
 from migas.operations import add_project
 
@@ -31,7 +32,7 @@ def _inspect_error(error_funcs: dict | None) -> dict:
     # < 3.11
     if hasattr(sys, 'last_type'):
         etype = sys.last_type
-        evalue = sys.last_value
+        evalue = format_exception_only(sys.last_value)[0]
         etb = sys.last_traceback
 
     if etype:
