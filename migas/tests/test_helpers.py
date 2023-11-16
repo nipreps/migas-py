@@ -34,8 +34,8 @@ def test_inspect_error(monkeypatch, error_funcs, error, status, error_desc):
         monkeypatch.setattr(sys, 'last_value', error_desc, raising=False)
         monkeypatch.setattr(sys, 'last_traceback', 'Traceback...', raising=False)
 
-    from migas.helpers import _inspect_error
-    res = _inspect_error(error_funcs)
+    from migas.error import inspect_error
+    res = inspect_error(error_funcs)
 
     assert res.get('status') == status
     if error_desc is not None:
