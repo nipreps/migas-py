@@ -53,7 +53,7 @@ class NodeExecutionError(Exception):
 
 TB = None
 try:
-    1 + 'a'
+    raise RuntimeError("Testing")
 except Exception:
     _, _, TB = sys.exc_info()
 
