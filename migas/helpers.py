@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import atexit
 
-from migas.operations import add_project
+from migas.operations import add_breadcrumb
 from migas.error import inspect_error
 
 
@@ -28,4 +28,4 @@ def _final_breadcrumb(
 ) -> dict:
     status_kwargs = inspect_error(error_funcs)
     kwargs = {**ping_kwargs, **status_kwargs}
-    return add_project(project, version, **kwargs)
+    return add_breadcrumb(project, version, **kwargs)
