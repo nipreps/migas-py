@@ -21,7 +21,7 @@ def inspect_error(error_funcs: dict | None = None) -> dict:
             etb = sys.last_traceback
 
     if err and etype:
-        evalue = err.args[0]
+        evalue = err.args[0] if err.args else str(err)
         ename = etype.__name__
 
         if isinstance(error_funcs, dict) and ename in error_funcs:
