@@ -283,7 +283,7 @@ def _parse_format_params(params: dict, query_args: dict) -> str:
             elif qval.name == 'LITERAL':
                 fval = val
             else:
-                logger.error('Do not know how to handle type %s', qarg.name)
+                logger.error('Do not know how to handle type %s', qval.name)
                 fval = ''
             query_inputs.append(f'{qarg}:{fval}')
 
