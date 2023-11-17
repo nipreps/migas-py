@@ -73,6 +73,33 @@ class AddBreadcrumb(Operation):
 
 @telemetry_enabled
 def add_breadcrumb(project: str, project_version: str, **kwargs) -> dict:
+    """
+    Send a breadcrumb with usage information to the telemetry server.
+
+    - `project` - application name
+    - `project_version` - application version
+
+    Optional keyword arguments
+    - `language` (auto-detected)
+    - `language_version` (auto-detected)
+    - process-specific
+        - `status`
+        - `status_desc`
+        - `error_type`
+        - `error_desc`
+    - context-specific
+        - `user_id` (auto-generated)
+        - `session_id`
+        - `user_type`
+        - `platform` (auto-detected)
+        - `container` (auto-detected)
+        - `is_ci` (auto-detected)
+
+    Returns
+    -------
+    response: dict
+        keys: success
+    """
     query = AddBreadcrumb.generate_query(
         project=project, project_version=project_version, **kwargs
     )
@@ -167,6 +194,17 @@ class CheckProject(Operation):
 
 @telemetry_enabled
 def check_project(project: str, project_version: str, **kwargs) -> dict:
+    """
+    Check a project version with the latest available.
+
+    This can be used to check for the most recent version, as well as if
+    the `project_version` has been flagged by developers.
+
+    Returns
+    -------
+    response: dict
+        keys: success, flagged, latest, message
+    """
     query = CheckProject.generate_query(project=project, project_version=project_version, **kwargs)
     logger.debug(query)
     _, response = request(Config.endpoint, query=query)
