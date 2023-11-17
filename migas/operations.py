@@ -4,14 +4,18 @@ Create queries and mutations to be sent to the graphql endpoint.
 from __future__ import annotations
 
 import dataclasses
+import enum
+import json
 import typing as ty
 import warnings
 
 from migas.config import Config, logger, telemetry_enabled
 from migas.request import request
 
-FREE = '"{}"'  # FREE text fields
-FIXED = '{}'  # FIXED text fields
+class QueryParamType(enum.Enum):
+    LITERAL = enum.auto()
+    TEXT = enum.auto()
+
 ERROR = '[migas-py] An error occurred.'
 
 
@@ -48,23 +52,23 @@ class AddBreadcrumb(Operation):
     operation_type = "mutation"
     operation_name = "add_breadcrumb"
     query_args = {
-        "project": FREE,
-        "project_version": FREE,
-        "language": FREE,
-        "language_version": FREE,
+        "project": QueryParamType.TEXT,
+        "project_version": QueryParamType.TEXT,
+        "language": QueryParamType.TEXT,
+        "language_version": QueryParamType.TEXT,
         "ctx": {
-            "session_id": FREE,
-            "user_id": FREE,
-            "user_type": FIXED,
-            "platform": FREE,
-            "container": FIXED,
-            "is_ci": FIXED,
+            "session_id": QueryParamType.TEXT,
+            "user_id": QueryParamType.TEXT,
+            "user_type": QueryParamType.LITERAL,
+            "platform": QueryParamType.TEXT,
+            "container": QueryParamType.LITERAL,
+            "is_ci": QueryParamType.LITERAL,
         },
         "proc": {
-            "status": FIXED,
-            "status_desc": FREE,
-            "error_type": FREE,
-            "error_desc": FREE,
+            "status": QueryParamType.LITERAL,
+            "status_desc": QueryParamType.TEXT,
+            "error_type": QueryParamType.TEXT,
+            "error_desc": QueryParamType.TEXT,
         },
     }
     fingerprint = True
@@ -114,21 +118,21 @@ class AddProject(Operation):
     operation_name = "add_project"
     query_args = {
         "p": {
-            "project": FREE,
-            "project_version": FREE,
-            "language": FREE,
-            "language_version": FREE,
-            "is_ci": FIXED,
-            "status": FIXED,
-            "status_desc": FREE,
-            "error_type": FREE,
-            "error_desc": FREE,
-            "user_id": FREE,
-            "session_id": FREE,
-            "container": FIXED,
-            "user_type": FIXED,
-            "platform": FREE,
-            "arguments": FREE,
+            "project": QueryParamType.TEXT,
+            "project_version": QueryParamType.TEXT,
+            "language": QueryParamType.TEXT,
+            "language_version": QueryParamType.TEXT,
+            "is_ci": QueryParamType.LITERAL,
+            "status": QueryParamType.LITERAL,
+            "status_desc": QueryParamType.TEXT,
+            "error_type": QueryParamType.TEXT,
+            "error_desc": QueryParamType.TEXT,
+            "user_id": QueryParamType.TEXT,
+            "session_id": QueryParamType.TEXT,
+            "container": QueryParamType.LITERAL,
+            "user_type": QueryParamType.LITERAL,
+            "platform": QueryParamType.TEXT,
+            "arguments": QueryParamType.TEXT,
         },
     }
     fingerprint = True
@@ -174,20 +178,20 @@ class CheckProject(Operation):
     operation_type = "query"
     operation_name = "check_project"
     query_args = {
-        "project": FREE,
-        "project_version": FREE,
-        "language": FREE,
-        "language_version": FREE,
-        "is_ci": FIXED,
-        "status": FIXED,
-        "status_desc": FREE,
-        "error_type": FREE,
-        "error_desc": FREE,
-        "user_id": FREE,
-        "session_id": FREE,
-        "container": FIXED,
-        "platform": FREE,
-        "arguments": FREE,
+        "project": QueryParamType.TEXT,
+        "project_version": QueryParamType.TEXT,
+        "language": QueryParamType.TEXT,
+        "language_version": QueryParamType.TEXT,
+        "is_ci": QueryParamType.LITERAL,
+        "status": QueryParamType.LITERAL,
+        "status_desc": QueryParamType.TEXT,
+        "error_type": QueryParamType.TEXT,
+        "error_desc": QueryParamType.TEXT,
+        "user_id": QueryParamType.TEXT,
+        "session_id": QueryParamType.TEXT,
+        "container": QueryParamType.LITERAL,
+        "platform": QueryParamType.TEXT,
+        "arguments": QueryParamType.TEXT,
     }
     selections = ('success', 'flagged', 'latest', 'message')
 
@@ -216,10 +220,10 @@ class GetUsage(Operation):
     operation_type = 'query'
     operation_name = 'get_usage'
     query_args = {
-        "project": FREE,
-        "start": FREE,
-        "end": FREE,
-        "unique": FIXED,
+        "project": QueryParamType.TEXT,
+        "start": QueryParamType.TEXT,
+        "end": QueryParamType.TEXT,
+        "unique": QueryParamType.LITERAL,
     }
 
 
@@ -273,8 +277,15 @@ def _parse_format_params(params: dict, query_args: dict) -> str:
             val = params[qarg]
             if isinstance(val, bool):
                 val = str(val).lower()
-            val = qval.format(val)
-            query_inputs.append(f'{qarg}:{val}')
+
+            if qval.name == 'TEXT':
+                fval = json.dumps(val)
+            elif qval.name == 'LITERAL':
+                fval = val
+            else:
+                logger.error('Do not know how to handle type %s', qval.name)
+                fval = ''
+            query_inputs.append(f'{qarg}:{fval}')
 
         elif isinstance(qval, dict):
             vals = _parse_format_params(params, qval)
