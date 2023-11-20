@@ -3,6 +3,8 @@ from types import TracebackType
 
 from migas.error import strip_filenames
 
+MAX_TRACEBACK_SIZE = 1500
+
 
 def node_execution_error(etype: type, evalue: str, etb: TracebackType) -> dict:
     strpval = evalue.replace('\n', ' ').replace('\t', ' ').strip()
@@ -22,6 +24,9 @@ def node_execution_error(etype: type, evalue: str, etb: TracebackType) -> dict:
 
     if m := re.search(r'(?P<tb>(?<=Traceback:).*)', strpval):
         tb = strip_filenames(m.group('tb')).strip()
+        # cap traceback size to avoid massive request
+        if len(tb) > 1500:
+            tb = f'{tb[:747]}...{tb[-750:]}'
 
     return {
         'status': 'F',
