@@ -1,6 +1,6 @@
 import sys
 
-from migas.error.nipype import node_execution_error
+from migas.error.nipype import node_execution_error, MAX_TRACEBACK_SIZE
 
 ERROR_TEXT = """
 nipype.pipeline.engine.nodes.NodeExecutionError: Exception raised while executing Node failingnode.
@@ -63,3 +63,4 @@ def test_node_execution_error():
     assert kwargs['status'] == 'F'
     assert kwargs['error_type'] == 'NodeExecutionError'
     assert 'FileNotFoundError' in kwargs['error_desc']
+    assert len(kwargs['error_desc']) <= MAX_TRACEBACK_SIZE
