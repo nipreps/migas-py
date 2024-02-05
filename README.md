@@ -24,11 +24,12 @@ import migas; migas.setup(endpoint='your-endpoint')
 
 `setup()` will populate the [interal configuration](#configuration), which is done at the process level.
 
-### API
+## API
 
 `migas` includes the following functions to communicate with the telemetry server:
 
-#### migas.add_breadcrumb() {#addbreadcrumb}
+### migas.add_breadcrumb()
+---
 Send a breadcrumb with usage information to the server.
 
 ##### Mandatory
@@ -61,7 +62,8 @@ Send a breadcrumb with usage information to the server.
 
 </details>
 
-#### migas.check_project() {#checkproject}
+### migas.check_project()
+---
 Check a project version against later developments.
 
 ##### Mandatory
@@ -79,8 +81,8 @@ Check a project version against later developments.
 
 </details>
 
-#### migas.get_usage() {#getusage}
-
+### migas.get_usage()
+---
 Check number of uses a `project` has received from a start date, and optionally an end date.
 If no end date is specified, the current datetime is used.
 
@@ -95,8 +97,8 @@ If no end date is specified, the current datetime is used.
 </details>
 
 
-#### migas.track_exit() {#trackexit}
-
+### migas.track_exit()
+---
 Register an exit function to send a final ping upon termination of the Python interpretter.
 Useful when monitoring a process that may preemptively error.
 The inputs are equivalent to [`add_breadcrumb()`](#addbreadcrumb)
@@ -107,9 +109,9 @@ The inputs are equivalent to [`add_breadcrumb()`](#addbreadcrumb)
 
 | Envvar | Description | Value | Default |
 | ---- | ---- | ---- | ---- |
-| MIGAS_OPTOUT | Disable telemetry collection | Any | None
-| MIGAS_TIMEOUT | Seconds to wait for server response | Number >= 0 | 5
-| MIGAS_LOG_LEVEL | Logger level | [Logging levels](https://docs.python.org/3/library/logging.html#levels) | WARNING
+| `MIGAS_OPTOUT` | Disable telemetry collection | Any | None
+| `MIGAS_TIMEOUT` | Seconds to wait for server response | Number >= 0 | 5
+| `MIGAS_LOG_LEVEL` | Logger level | [Logging levels](https://docs.python.org/3/library/logging.html#levels) | WARNING
 
 
 ## Configuration
