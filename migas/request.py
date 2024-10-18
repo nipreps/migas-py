@@ -5,6 +5,7 @@ import os
 from typing import Optional, Tuple, Union
 from http.client import HTTPConnection, HTTPResponse, HTTPSConnection
 from urllib.parse import urlparse
+from concurrent.futures import ThreadPoolExecutor
 
 from . import __version__
 from .config import logger
@@ -20,6 +21,32 @@ UNAVAIL_RESPONSE = (503, {"data": None, "errors": [{"message": "Could not connec
 
 
 def request(
+    url: str,
+    *,
+    query: str = None,
+    timeout: float = None,
+    method: str = "POST",
+    chunk_size: int | None = None,
+    wait: bool = False,
+) -> None:
+    """
+    Send a non-blocking call to the server.
+
+    This will never check the future, and no assumptions can be made about server receptivity.
+    """
+    with ThreadPoolExecutor() as executor:
+        future = executor.submit(
+            _request, url, query=query, timeout=timeout, method=method, chunk_size=chunk_size,
+        )
+
+        if wait is True:
+            print('Waiting for result!')
+            return future.result()
+        else:
+            print('No wait!')
+
+
+def _request(
     url: str,
     *,
     query: str = None,
@@ -73,7 +100,7 @@ def request(
     finally:
         conn.close()
 
-    if body and response.headers.get("content-type").startswith("application/json"):
+    if body and response.headers.get("content-type", "").startswith("application/json"):
         body = json.loads(body)
 
     if not response.headers.get("X-Backend-Server"):
