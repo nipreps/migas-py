@@ -108,9 +108,7 @@ def add_breadcrumb(project: str, project_version: str, **kwargs) -> dict:
         project=project, project_version=project_version, **kwargs
     )
     logger.debug(query)
-    _, response = request(Config.endpoint, query=query)
-    res = _filter_response(response, AddBreadcrumb.operation_name, AddBreadcrumb.error_response)
-    return res
+    request(Config.endpoint, query=query, wait=False)
 
 
 class AddProject(Operation):
@@ -169,7 +167,7 @@ def add_project(project: str, project_version: str, **kwargs) -> dict:
     )
     query = AddProject.generate_query(project=project, project_version=project_version, **kwargs)
     logger.debug(query)
-    _, response = request(Config.endpoint, query=query)
+    _, response = request(Config.endpoint, query=query, wait=True)
     res = _filter_response(response, AddProject.operation_name, AddProject.error_response)
     return res
 
@@ -211,7 +209,7 @@ def check_project(project: str, project_version: str, **kwargs) -> dict:
     """
     query = CheckProject.generate_query(project=project, project_version=project_version, **kwargs)
     logger.debug(query)
-    _, response = request(Config.endpoint, query=query)
+    _, response = request(Config.endpoint, query=query, wait=True)
     res = _filter_response(response, CheckProject.operation_name)
     return res
 
@@ -231,7 +229,7 @@ class GetUsage(Operation):
 def get_usage(project: str, start: str, **kwargs) -> dict:
     query = GetUsage.generate_query(project=project, start=start, **kwargs)
     logger.debug(query)
-    _, response = request(Config.endpoint, query=query)
+    _, response = request(Config.endpoint, query=query, wait=True)
     res = _filter_response(response, GetUsage.operation_name)
     return res
 
