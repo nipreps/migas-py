@@ -40,10 +40,7 @@ def request(
         )
 
         if wait is True:
-            print('Waiting for result!')
             return future.result()
-        else:
-            print('No wait!')
 
 
 def _request(
