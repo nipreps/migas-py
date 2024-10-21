@@ -3,15 +3,15 @@ name: build-test
 on:
   push:
     branches:
-      - main
+    - main
     tags:
-      - '*'
+    - '*'
   pull_request:
     branches:
-      - main
+    - main
   schedule:
-    # 7am EST / 8am EDT Mondays
-    - cron: '0 12 * * 1'
+  # 7am EST / 8am EDT Mondays
+  - cron: '0 12 * * 1'
 
 defaults:
   run:
@@ -30,7 +30,7 @@ jobs:
       with:
         fetch-depth: 0
     - name: Set up Python 3
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: 3
     - name: Check python version and install build
@@ -39,7 +39,7 @@ jobs:
       run: pipx run build
     - name: Check distributions
       run: pipx run twine check dist/*
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v4
       with:
         name: dist
         path: dist/
@@ -50,15 +50,15 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
+        python-version: ['3.9', '3.10', '3.11', '3.12']
         install: [repo]
         include:
-          - python-version: '3.11'
-            install: sdist
-          - python-version: '3.11'
-            install: wheel
-          - python-version: '3.9'
-            install: editable
+        - python-version: '3.12'
+          install: sdist
+        - python-version: '3.12'
+          install: wheel
+        - python-version: '3.12'
+          install: editable
     env:
       INSTALL_TYPE: ${{ matrix.install }}
     steps:
@@ -67,10 +67,10 @@ jobs:
       with:
         fetch-depth: 0
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
-    - uses: actions/download-artifact@v3
+    - uses: actions/download-artifact@v4
       with:
         name: dist
         path: dist/
@@ -117,13 +117,13 @@ jobs:
       with:
         fetch-depth: 0
     - name: Set up Python 3
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: 3
     - name: Verify python version
       run: python -V
     - name: Fetch packaged build
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: dist
         path: dist/
