@@ -9,7 +9,6 @@ import pytest
 from migas import __version__
 from migas.operations import (
     add_breadcrumb,
-    add_project,
     check_project,
     get_usage,
 )
@@ -25,12 +24,14 @@ future = (today + timedelta(days=2)).strftime('%Y-%m-%d')
 today = today.strftime('%Y-%m-%d')
 
 
-def test_database_io(setup_migas):
+def test_migas_add_get(setup_migas):
     res = add_breadcrumb(test_project, __version__)
     # ensure kwargs can be submitted
-    res = add_breadcrumb(test_project, __version__, language='cpython', platform='win32')
+    res = add_breadcrumb(test_project, __version__, wait=True, language='cpython', platform='win32')
+    assert res['success'] is True
     # this breadcrumb is not valid
-    res = add_breadcrumb(test_project, __version__, status='wtf')
+    res = add_breadcrumb(test_project, __version__, wait=True, status='wtf')
+    assert res['success'] is False
 
     res = get_usage(test_project, start=today)
     assert res['success'] is True
