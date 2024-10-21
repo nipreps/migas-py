@@ -25,30 +25,17 @@ future = (today + timedelta(days=2)).strftime('%Y-%m-%d')
 today = today.strftime('%Y-%m-%d')
 
 
-def test_operations(setup_migas):
-    _test_add_breakcrumb()
-    # add delay to ensure server has updated
-    time.sleep(2)
-    _test_get_usage()
-
-def _test_add_breakcrumb():
+def test_database_io(setup_migas):
     res = add_breadcrumb(test_project, __version__)
-    assert res['success'] is True
-
     # ensure kwargs can be submitted
     res = add_breadcrumb(test_project, __version__, language='cpython', platform='win32')
-    assert res['success'] is True
-
-    # validation should happen instantly
+    # this breadcrumb is not valid
     res = add_breadcrumb(test_project, __version__, status='wtf')
-    assert res['success'] is False
 
-def _test_get_usage():
-    """This test requires `_test_add_breadcrumb()` to be run before."""
     res = get_usage(test_project, start=today)
     assert res['success'] is True
     all_usage = res['hits']
-    assert all_usage > 0
+    assert all_usage == 2
 
     res = get_usage(test_project, start=today, unique=True)
     assert res['success'] is True
@@ -62,25 +49,6 @@ def _test_get_usage():
     res = get_usage('my/madeup-project', start=today)
     assert res['success'] is False
     assert res['hits'] == 0
-
-
-def test_add_project(setup_migas):
-    res = add_project(test_project, __version__)
-    assert res['success'] is True
-    latest = res['latest_version']
-    assert latest
-
-    # ensure kwargs can be submitted
-    res = add_project(test_project, __version__, language='cpython', platform='win32')
-    assert res['success'] is True
-    assert res['latest_version'] == latest
-    # should be cached since we just checked the version
-    assert res['cached'] is True
-
-    # illegal queries should fail
-    res = add_project(test_project, __version__, status='wtf')
-    assert res['success'] is False
-    assert res['latest_version'] is None
 
 
 def test_check_project(setup_migas):

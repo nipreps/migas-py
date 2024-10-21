@@ -1,6 +1,6 @@
 import pytest
 
-from migas.request import request
+from migas.request import _request
 
 GET_URL = 'https://httpbin.org/get'
 GET_COMPRESSED_URL = 'https://httpbingo.org/get'
@@ -15,22 +15,22 @@ POST_URL = 'https://httpbin.org/post'
     ]
 )
 def test_request_get(method, url, query):
-    status, res = request(url, query=query, method=method)
+    status, res = _request(url, query=query, method=method)
     assert status == 200
     assert res
 
 
 def test_timeout(monkeypatch):
-    status, res = request(GET_URL, timeout=0.00001, method="GET")
+    status, res = _request(GET_URL, timeout=0.00001, method="GET")
     assert status == 408
     assert res['errors']
 
     monkeypatch.setenv('MIGAS_TIMEOUT', '0.000001')
-    status, res = request(GET_URL, method="GET")
+    status, res = _request(GET_URL, method="GET")
     assert status == 408
     assert res['errors']
 
     monkeypatch.delenv('MIGAS_TIMEOUT')
-    status, res = request(GET_URL, method="GET")
+    status, res = _request(GET_URL, method="GET")
     assert status == 200
     assert res
