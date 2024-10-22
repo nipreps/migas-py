@@ -6,6 +6,8 @@ GET_URL = 'https://httpbin.org/get'
 GET_COMPRESSED_URL = 'https://httpbingo.org/get'
 POST_URL = 'https://httpbin.org/post'
 
+pytestmark = pytest.mark.filterwarnings("ignore")
+
 
 @pytest.mark.parametrize(
     'method,url,query', [
