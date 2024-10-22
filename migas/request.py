@@ -3,13 +3,13 @@ from __future__ import annotations
 
 import json
 import os
+import warnings
 from typing import Optional, Tuple, Union
 from http.client import HTTPConnection, HTTPResponse, HTTPSConnection
 from urllib.parse import urlparse
 from concurrent.futures import ThreadPoolExecutor
 
 from . import __version__
-from .config import logger
 
 ETResponse = Tuple[int, Union[dict, str]]  # status code, body
 
@@ -102,7 +102,11 @@ def _request(
         body = json.loads(body)
 
     if not response.headers.get("X-Backend-Server"):
-        logger.warning("migas server is incorrectly configured.")
+        warnings.warn(
+            "migas server is incorrectly configured.",
+            UserWarning,
+            stacklevel=1,
+        )
     return response.status, body
 
 
