@@ -116,8 +116,8 @@ def add_breadcrumb(project: str, project_version: str, wait: bool = False, **kwa
     logger.debug(query)
     res = request(Config.endpoint, query=query, wait=wait)
     if wait:
-        res = res[1]
-    return res
+        res = _filter_response(res[1], AddBreadcrumb.operation_name, AddBreadcrumb.error_response)
+        return res
 
 
 class AddProject(Operation):
