@@ -116,6 +116,7 @@ def add_breadcrumb(project: str, project_version: str, wait: bool = False, **kwa
     logger.debug(query)
     res = request(Config.endpoint, query=query, wait=wait)
     if wait:
+        logger.debug(res)
         res = _filter_response(res[1], AddBreadcrumb.operation_name, AddBreadcrumb.error_response)
         return res
 
@@ -177,6 +178,7 @@ def add_project(project: str, project_version: str, **kwargs) -> dict:
     query = AddProject.generate_query(project=project, project_version=project_version, **kwargs)
     logger.debug(query)
     _, response = request(Config.endpoint, query=query, wait=True)
+    logger.debug(response)
     res = _filter_response(response, AddProject.operation_name, AddProject.error_response)
     return res
 
@@ -219,6 +221,7 @@ def check_project(project: str, project_version: str, **kwargs) -> dict:
     query = CheckProject.generate_query(project=project, project_version=project_version, **kwargs)
     logger.debug(query)
     _, response = request(Config.endpoint, query=query, wait=True)
+    logger.debug(response)
     res = _filter_response(response, CheckProject.operation_name)
     return res
 
@@ -236,9 +239,29 @@ class GetUsage(Operation):
 
 @telemetry_enabled
 def get_usage(project: str, start: str, **kwargs) -> dict:
+    """Retrieve usage statistics from the migas server.
+
+    Parameters
+    ----------
+    project : str
+        Project name, formatted in GitHub `<owner>/<repo>` convention
+    start : str
+        Start of data collection. Supports the following formats:
+        `YYYY-MM-DD`
+        `YYYY-MM-DDTHH:MM:SSZ'
+    kwargs
+        Additional arguments for the query
+        end: End range of data collection. Same formats as `start`.
+        unique: Filter out hits from same user_id.
+
+    Returns
+        response : dict
+            success, hits, unique, message
+    """
     query = GetUsage.generate_query(project=project, start=start, **kwargs)
     logger.debug(query)
     _, response = request(Config.endpoint, query=query, wait=True)
+    logger.debug(response)
     res = _filter_response(response, GetUsage.operation_name)
     return res
 
