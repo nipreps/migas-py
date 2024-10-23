@@ -100,13 +100,16 @@ jobs:
       env:
         MIGAS_BYPASS_RATE_LIMIT: '1'
     - name: Verify server is available
-      run: docker port ${MIGAS_SERVER_NAME} && sleep 10
+      run: docker port ${MIGAS_SERVER_NAME} && sleep 10 && docker ps
       env:
         MIGAS_SERVER_NAME: app
     - name: Run tests
       env:
         MIGAS_FRESH_DB: '1'
       run: python -m pytest -sv --doctest-modules --pyargs migas
+    - name: Show server logs (debug)
+      if: always()
+      run: docker container logs app
     - name: Stop local server
       run: docker compose -f migas-server/docker-compose.yml down
 
