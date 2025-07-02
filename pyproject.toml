@@ -90,3 +90,8 @@ per-file-ignores = [
     "**/__init__.py : F401",
     "docs/conf.py : E265",
 ]
+
+[tool.pytest.ini_options]
+markers = [
+    "non_idempotent: test cannot be run more than once without resetting db",
+]

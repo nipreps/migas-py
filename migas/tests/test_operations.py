@@ -32,12 +32,12 @@ TEST_ENDPOINT = f"{TEST_ROOT}graphql"
 def setup_migas():
     """Ensure migas is configured to communicate with the staging app."""
     migas.setup(endpoint=TEST_ENDPOINT)
-
     assert migas.config.Config._is_setup
-    return migas.config.Config._is_setup
+    yield
 
 
 
+@pytest.mark.non_idempotent
 def test_migas_add_get():
     res = add_breadcrumb(test_project, migas.__version__)
     # ensure kwargs can be submitted
