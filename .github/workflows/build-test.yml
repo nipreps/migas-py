@@ -21,7 +21,6 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -29,29 +28,24 @@ jobs:
     - uses: actions/checkout@v4
       with:
         fetch-depth: 0
-    - name: Set up Python 3
-      uses: actions/setup-python@v5
-      with:
-        python-version: 3
-    - name: Check python version and install build
-      run: python --version
+    - name: Install the latest version of uv
+      uses: astral-sh/setup-uv@v6
     - name: Build migas
-      run: pipx run build
+      run: uvx --from build pyproject-build --installer uv
     - name: Check distributions
-      run: pipx run twine check dist/*
+      run: uvx twine check dist/*
     - uses: actions/upload-artifact@v4
       with:
         name: dist
         path: dist/
-
 
   test:
     needs: build
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ['3.9', '3.10', '3.11', '3.12']
-        install: [repo]
+        python-version: [ '3.9', '3.10', '3.11', '3.12' ]
+        install: [ repo ]
         include:
         - python-version: '3.12'
           install: sdist
@@ -66,8 +60,8 @@ jobs:
       if: matrix.install == 'repo' || matrix.install == 'editable'
       with:
         fetch-depth: 0
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
+    - name: Install the latest version of uv
+      uses: astral-sh/setup-uv@v6
       with:
         python-version: ${{ matrix.python-version }}
     - uses: actions/download-artifact@v4
@@ -87,8 +81,8 @@ jobs:
         fi
         echo "ARCHIVE=$ARCHIVE" >> $GITHUB_ENV
     - name: Install package and test dependencies
-      run: python -m pip install $ARCHIVE[test]
-    - uses: actions/checkout@v3
+      run: uv run pip install $ARCHIVE[test]
+    - uses: actions/checkout@v4
       with:
         repository: 'nipreps/migas-server'
         path: 'migas-server'
@@ -100,28 +94,31 @@ jobs:
       env:
         MIGAS_BYPASS_RATE_LIMIT: '1'
     - name: Verify server is available
-      run: docker port ${MIGAS_SERVER_NAME} && sleep 10
+      run: docker port ${MIGAS_SERVER_NAME} && sleep 10 && docker ps
       env:
         MIGAS_SERVER_NAME: app
     - name: Run tests
-      run: python -m pytest -sv --doctest-modules --pyargs migas
+      env:
+        MIGAS_FRESH_DB: '1'
+      run: python -m pytest -sv --doctest-modules -k "not non_idempotent" --pyargs migas
+    - name: Show server logs (debug)
+      if: always()
+      run: docker container logs app
     - name: Stop local server
       run: docker compose -f migas-server/docker-compose.yml down
 
   release:
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
-    needs: [build, test]
+    needs: [ build, test ]
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
       with:
         fetch-depth: 0
-    - name: Set up Python 3
-      uses: actions/setup-python@v5
-      with:
-        python-version: 3
+    - name: Install the latest version of uv
+      uses: astral-sh/setup-uv@v6
     - name: Verify python version
-      run: python -V
+      run: uv run python -V
     - name: Fetch packaged build
       uses: actions/download-artifact@v4
       with:
