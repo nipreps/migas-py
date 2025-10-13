@@ -22,7 +22,7 @@ However it can easily be configured to communicate with any hosted `migas` serve
 import migas; migas.setup(endpoint='your-endpoint')
 ```
 
-`setup()` will populate the [interal configuration](#configuration), which is done at the process level.
+`setup()` will populate the [internal configuration](#configuration), which is done at the process level.
 
 ## API
 
@@ -99,7 +99,7 @@ If no end date is specified, the current datetime is used.
 
 ### [migas.track_exit] (#track-exit)
 ---
-Register an exit function to send a final ping upon termination of the Python interpretter.
+Register an exit function to send a final ping upon termination of the Python interpreter.
 Useful when monitoring a process that may preemptively error.
 The inputs are equivalent to [`add_breadcrumb()`](#add-breadcrumb)
 
