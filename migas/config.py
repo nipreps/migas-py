@@ -10,7 +10,7 @@ from tempfile import gettempdir
 
 from .utils import compile_info
 
-DEFAULT_ENDPOINT = 'https://migas.nipreps.org/graphql'
+DEFAULT_ENDPOINT = 'https://migas.nipreps.org'
 DEFAULT_CONFIG_FILE_FMT = str(Path(gettempdir()) / 'migas-{pid}.json').format
 
 # TODO: 3.10 - Replace with | operator
@@ -71,7 +71,7 @@ class Config:
 
     The class stores the following components:
     - `endpoint`:
-    URL of the graphql endpoint of the migas server.
+    Base URL of the migas server.
     - `user_id`:
     A string representation of a UUID (RFC 4122) assigned to the user.
     - `session_id`:
@@ -117,7 +117,10 @@ class Config:
         """
         if cls._pid is None:
             cls._pid = os.getpid()
-        cls.endpoint = endpoint or DEFAULT_ENDPOINT
+        endpoint = endpoint or DEFAULT_ENDPOINT
+        if endpoint.endswith('/graphql'):
+            endpoint = endpoint.removesuffix('/graphql')
+        cls.endpoint = endpoint
         # initialize kwargs first
         for param, val in kwargs.items():
             if hasattr(cls, param):
