@@ -11,7 +11,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 from . import __version__
 
-ETResponse = Tuple[int, Union[dict, str]]  # status code, body
+MigasResponse = Tuple[int, Union[dict, str]]  # status code, body
 
 DEFAULT_TIMEOUT = 3
 TIMEOUT_RESPONSE = (
@@ -25,11 +25,13 @@ def request(
     url: str,
     *,
     query: str = None,
+    path: str = None,
+    json_data: dict = None,
     timeout: float = None,
     method: str = "POST",
     chunk_size: int | None = None,
     wait: bool = False,
-) -> None:
+) -> MigasResponse | None:
     """
     Send a non-blocking call to the server.
 
@@ -37,7 +39,15 @@ def request(
     """
     with ThreadPoolExecutor() as executor:
         future = executor.submit(
-            _request, url, query=query, timeout=timeout, method=method, chunk_size=chunk_size,
+            _request,
+            url,
+            query=query,
+            path=path,
+            json_data=json_data,
+            timeout=timeout,
+            method=method,
+            chunk_size=chunk_size,
+            wait=wait,
         )
 
         if wait is True:
@@ -48,9 +58,12 @@ def _request(
     url: str,
     *,
     query: str = None,
+    path: str = None,
+    json_data: dict = None,
     timeout: float = None,
     method: str = "POST",
     chunk_size: int = None,
+    wait: bool = False,
 ) -> ETResponse:
     purl = urlparse(url)
     # TODO: 3.10 - Replace with match/case
@@ -67,19 +80,27 @@ def _request(
         'User-Agent': f'migas-client/{__version__}',
         'Accept-Encoding': 'gzip, deflate',
         'Accept': '*/*',
+        'Content-Type': 'application/json; charset=utf-8',
     }
     body = None
     if query:
         body = json.dumps({"query": query}).encode("utf-8")
-        headers.update(
-            {
-                'Content-Length': len(body),
-                'Content-Type': 'application/json; charset=utf-8',
-            }
-        )
+    elif json_data:
+        body = json.dumps(json_data).encode("utf-8")
+
+    if body:
+        headers['Content-Length'] = len(body)
+
+    request_path = purl.path
+    if path:
+        request_path = os.path.join(request_path, path.lstrip('/'))
+
+    if wait and not query:
+        sep = '&' if '?' in request_path else '?'
+        request_path += f'{sep}wait=true'
 
     try:
-        conn.request(method, purl.path, body=body, headers=headers)
+        conn.request(method, request_path, body=body, headers=headers)
         response = conn.getresponse()
         encoding = response.headers.get('content-encoding')
         body = _read_response(response, encoding, chunk_size)
