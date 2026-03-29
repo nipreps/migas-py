@@ -5,7 +5,7 @@ except ImportError:
 
 from .config import print_config, setup
 from .helpers import track_exit
-from .operations import add_breadcrumb, check_project, get_usage
+from .api import add_breadcrumb, check_project, get_usage
 
 __all__ = (
     "__version__",

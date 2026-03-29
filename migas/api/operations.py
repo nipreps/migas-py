@@ -7,7 +7,6 @@ import dataclasses
 import enum
 import json
 import typing as ty
-import warnings
 
 from migas.config import Config, logger, telemetry_enabled
 from migas.request import request
@@ -48,107 +47,7 @@ class Operation:
         return cls.query
 
 
-class AddBreadcrumb(Operation):
-    operation_type = "mutation"
-    operation_name = "add_breadcrumb"
-    query_args = {
-        "project": QueryParamType.TEXT,
-        "project_version": QueryParamType.TEXT,
-        "language": QueryParamType.TEXT,
-        "language_version": QueryParamType.TEXT,
-        "ctx": {
-            "session_id": QueryParamType.TEXT,
-            "user_id": QueryParamType.TEXT,
-            "user_type": QueryParamType.LITERAL,
-            "platform": QueryParamType.TEXT,
-            "container": QueryParamType.LITERAL,
-            "is_ci": QueryParamType.LITERAL,
-        },
-        "proc": {
-            "status": QueryParamType.LITERAL,
-            "status_desc": QueryParamType.TEXT,
-            "error_type": QueryParamType.TEXT,
-            "error_desc": QueryParamType.TEXT,
-        },
-    }
-    fingerprint = True
-    selections = ('success',)
 
-
-@telemetry_enabled
-def add_breadcrumb(project: str, project_version: str, wait: bool = False, **kwargs) -> dict | None:
-    """
-    Send a breadcrumb with usage information to the telemetry server.
-
-    Parameters
-    ----------
-    project : str
-        Project name, formatted in GitHub `<owner>/<repo>` convention
-    project_version : str
-        Version string
-    wait : bool, default=False
-        If enable, wait for server response.
-    **kwargs
-        Additional usage information to send. Includes:
-        - `language` (auto-detected)
-        - `language_version` (auto-detected)
-        - process-specific
-            - `status`
-            - `status_desc`
-            - `error_type`
-            - `error_desc`
-        - context-specific
-            - `user_id` (auto-generated)
-            - `session_id`
-            - `user_type`
-            - `platform` (auto-detected)
-            - `container` (auto-detected)
-            - `is_ci` (auto-detected)
-
-    Returns
-    -------
-    response: dict
-        keys: success
-    """
-    query = AddBreadcrumb.generate_query(
-        project=project, project_version=project_version, **kwargs
-    )
-    logger.debug(query)
-    res = request(Config.endpoint, query=query, wait=wait)
-    if wait:
-        logger.debug(res)
-        res = _filter_response(res[1], AddBreadcrumb.operation_name, AddBreadcrumb.error_response)
-        return res
-
-
-class AddProject(Operation):
-    operation_type = "mutation"
-    operation_name = "add_project"
-    query_args = {
-        "p": {
-            "project": QueryParamType.TEXT,
-            "project_version": QueryParamType.TEXT,
-            "language": QueryParamType.TEXT,
-            "language_version": QueryParamType.TEXT,
-            "is_ci": QueryParamType.LITERAL,
-            "status": QueryParamType.LITERAL,
-            "status_desc": QueryParamType.TEXT,
-            "error_type": QueryParamType.TEXT,
-            "error_desc": QueryParamType.TEXT,
-            "user_id": QueryParamType.TEXT,
-            "session_id": QueryParamType.TEXT,
-            "container": QueryParamType.LITERAL,
-            "user_type": QueryParamType.LITERAL,
-            "platform": QueryParamType.TEXT,
-            "arguments": QueryParamType.TEXT,
-        },
-    }
-    fingerprint = True
-    error_response = {
-        "success": False,
-        "latest_version": None,
-        "message": ERROR,
-    }
 
 
 @telemetry_enabled
@@ -170,17 +69,9 @@ def add_project(project: str, project_version: str, **kwargs) -> dict:
     A dictionary containing the latest released version of the project,
     as well as any messages sent by the developers.
     """
-    warnings.warn(
-        "This method has been separated into `add_breadcrumb` and `check_project` methods.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-    query = AddProject.generate_query(project=project, project_version=project_version, **kwargs)
-    logger.debug(query)
-    _, response = request(Config.endpoint, query=query, wait=True)
-    logger.debug(response)
-    res = _filter_response(response, AddProject.operation_name, AddProject.error_response)
-    return res
+    # ...
+    from .rest import add_breadcrumb
+    return add_breadcrumb(project, project_version, wait=True, **kwargs)
 
 
 class CheckProject(Operation):
@@ -220,7 +111,8 @@ def check_project(project: str, project_version: str, **kwargs) -> dict:
     """
     query = CheckProject.generate_query(project=project, project_version=project_version, **kwargs)
     logger.debug(query)
-    _, response = request(Config.endpoint, query=query, wait=True)
+    endpoint = f"{Config.endpoint.rstrip('/')}/graphql"
+    _, response = request(endpoint, query=query, wait=True)
     logger.debug(response)
     res = _filter_response(response, CheckProject.operation_name)
     return res
@@ -260,7 +152,8 @@ def get_usage(project: str, start: str, **kwargs) -> dict:
     """
     query = GetUsage.generate_query(project=project, start=start, **kwargs)
     logger.debug(query)
-    _, response = request(Config.endpoint, query=query, wait=True)
+    endpoint = f"{Config.endpoint.rstrip('/')}/graphql"
+    _, response = request(endpoint, query=query, wait=True)
     logger.debug(response)
     res = _filter_response(response, GetUsage.operation_name)
     return res
@@ -286,6 +179,9 @@ def _filter_response(response: dict | str, operation: str, fallback: dict | None
         }
 
     if isinstance(response, dict):
+        if "success" in response:
+            return response
+
         res = response.get("data")
         # success
         if isinstance(res, dict):
@@ -293,7 +189,10 @@ def _filter_response(response: dict | str, operation: str, fallback: dict | None
 
     # Otherwise data is None, return fallback response with error reported
     try:
-        fallback['message'] = response.get('errors')[0]['message']
+        if isinstance(response, dict) and response.get('errors'):
+            fallback['message'] = response.get('errors')[0]['message']
+        elif isinstance(response, dict) and response.get('detail'):
+            fallback['message'] = response.get('detail')
     finally:
         return fallback
 
