@@ -91,6 +91,7 @@ class Config:
         'platform',
         'container',
         'is_ci',
+        'user_type',
     )
     endpoint: str = None
     user_id: str = None
@@ -100,6 +101,7 @@ class Config:
     platform: str = None
     container: str = None
     is_ci: bool = None
+    user_type: str = None
 
     @classmethod
     def init(
@@ -248,7 +250,6 @@ def gen_uuid(uuid_factory: str = "safe", container: typing.Optional[str] = None)
     - Docker images where previous config is unavailable
     """
     in_docker = container == 'docker'
-    # TODO: 3.10 - Replace with match/case
     if uuid_factory == "safe":
         return _safe_uuid_factory(in_docker)
     elif uuid_factory == "random":
