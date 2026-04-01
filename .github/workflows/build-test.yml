@@ -25,16 +25,16 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         fetch-depth: 0
     - name: Install the latest version of uv
-      uses: astral-sh/setup-uv@v6
+      uses: astral-sh/setup-uv@v7
     - name: Build migas
-      run: uvx --from build pyproject-build --installer uv
+      run: uv build
     - name: Check distributions
       run: uvx twine check dist/*
-    - uses: actions/upload-artifact@v4
+    - uses: actions/upload-artifact@v5
       with:
         name: dist
         path: dist/
@@ -44,27 +44,27 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [ '3.9', '3.10', '3.11', '3.12' ]
+        python-version: [ '3.10', '3.11', '3.12', '3.13' ]
         install: [ repo ]
         include:
-        - python-version: '3.12'
+        - python-version: '3.13'
           install: sdist
-        - python-version: '3.12'
+        - python-version: '3.13'
           install: wheel
-        - python-version: '3.12'
+        - python-version: '3.13'
           install: editable
     env:
       INSTALL_TYPE: ${{ matrix.install }}
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       if: matrix.install == 'repo' || matrix.install == 'editable'
       with:
         fetch-depth: 0
     - name: Install the latest version of uv
-      uses: astral-sh/setup-uv@v6
+      uses: astral-sh/setup-uv@v7
       with:
         python-version: ${{ matrix.python-version }}
-    - uses: actions/download-artifact@v4
+    - uses: actions/download-artifact@v5
       with:
         name: dist
         path: dist/
@@ -82,15 +82,16 @@ jobs:
         echo "ARCHIVE=$ARCHIVE" >> $GITHUB_ENV
     - name: Install package and test dependencies
       run: uv run pip install $ARCHIVE[test]
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         repository: 'nipreps/migas-server'
         path: 'migas-server'
+        fetch-depth: 0
     - name: Start up local server
       run: |
         cd migas-server
-        pip install hatch
-        make compose-up
+        VERSION=$(uvx --with hatch-vcs hatch version | tail -n1)
+        make compose-up VERSION=$VERSION
       env:
         MIGAS_BYPASS_RATE_LIMIT: '1'
     - name: Verify server is available
@@ -100,7 +101,7 @@ jobs:
     - name: Run tests
       env:
         MIGAS_FRESH_DB: '1'
-      run: python -m pytest -sv --doctest-modules -k "not non_idempotent" --pyargs migas
+      run: uv run pytest -sv --doctest-modules -k "not non_idempotent" --pyargs migas
     - name: Show server logs (debug)
       if: always()
       run: docker container logs app
@@ -112,15 +113,15 @@ jobs:
     needs: [ build, test ]
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         fetch-depth: 0
     - name: Install the latest version of uv
-      uses: astral-sh/setup-uv@v6
+      uses: astral-sh/setup-uv@v7
     - name: Verify python version
       run: uv run python -V
     - name: Fetch packaged build
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v5
       with:
         name: dist
         path: dist/
