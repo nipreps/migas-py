@@ -6,7 +6,7 @@ from looseversion import LooseVersion
 import pytest
 
 import migas
-from migas.operations import (
+from migas.api import (
     add_breadcrumb,
     check_project,
     get_usage,
@@ -17,14 +17,14 @@ from .utils import run_server_tests
 # skip all tests in module if server is not available
 pytestmark = pytest.mark.skipif(not run_server_tests, reason="Local server not found")
 
-test_project = 'nipreps/migas-py'
+test_project = 'nipreps/nipreps'
 today = dt.now(tz.utc)
 future = (today + timedelta(days=2)).strftime('%Y-%m-%d')
 today = today.strftime('%Y-%m-%d')
 
 
 TEST_ROOT = "http://localhost:8080/"
-TEST_ENDPOINT = f"{TEST_ROOT}graphql"
+TEST_ENDPOINT = TEST_ROOT
 
 
 
@@ -32,6 +32,7 @@ TEST_ENDPOINT = f"{TEST_ROOT}graphql"
 def setup_migas():
     """Ensure migas is configured to communicate with the staging app."""
     migas.setup(endpoint=TEST_ENDPOINT)
+
     assert migas.config.Config._is_setup
     yield
 
@@ -71,8 +72,10 @@ def test_check_project():
     res = check_project(test_project, migas.__version__)
     assert res['success'] is True
     assert res['latest']
+    # Since we are using a real project (nipreps/nipreps), the latest version
+    # on GitHub may be ahead of the current development version.
     v = LooseVersion(migas.__version__)
     latest = LooseVersion(res['latest'])
-    assert v >= latest
+    assert latest
     assert res['flagged'] is False
     assert res['message'] == ''
