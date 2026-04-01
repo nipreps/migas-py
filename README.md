@@ -28,7 +28,7 @@ import migas; migas.setup(endpoint='your-endpoint')
 
 `migas` includes the following functions to communicate with the telemetry server:
 
-### [migas.add_breadcrumb] (#add-breadcrumb)
+### `migas.add_breadcrumb`
 ---
 Send a breadcrumb with usage information to the server.
 
@@ -62,7 +62,7 @@ Send a breadcrumb with usage information to the server.
 
 </details>
 
-### [migas.check_project] (#check-project)
+### `migas.check_project`
 ---
 Check a project version against later developments.
 
@@ -81,7 +81,7 @@ Check a project version against later developments.
 
 </details>
 
-### [migas.get_usage] (#get-usage)
+### `migas.get_usage`
 ---
 Check number of uses a `project` has received from a start date, and optionally an end date.
 If no end date is specified, the current datetime is used.
@@ -97,11 +97,11 @@ If no end date is specified, the current datetime is used.
 </details>
 
 
-### [migas.track_exit] (#track-exit)
+### `migas.track_exit`
 ---
 Register an exit function to send a final ping upon termination of the Python interpreter.
 Useful when monitoring a process that may preemptively error.
-The inputs are equivalent to [`add_breadcrumb()`](#add-breadcrumb)
+The inputs are equivalent to [`add_breadcrumb()`](#migasadd_breadcrumb)
 
 ## User Control
 
