@@ -21,7 +21,7 @@ def test_setup_default(tmp_path):
     user_id = conf.user_id
 
     # if setup is called again, overwrite existing
-    new_endpoint = 'https://migas-staging.herokuapp.com/graphql'
+    new_endpoint = 'https://migas-staging.herokuapp.com'
     new_user = '00000000-0000-0000-0000-000000000000'
     config.setup(endpoint=new_endpoint, user_id=new_user)
     assert conf.endpoint == new_endpoint
@@ -121,3 +121,16 @@ def test_logger(monkeypatch):
         m.setenv("MIGAS_LOG_LEVEL", "INFO")
         config._init_logger()
         assert logger.level == 20
+
+
+def test_endpoint_stripping():
+    conf = config.Config
+    conf._reset()
+    config.setup(endpoint='https://migas.nipreps.org/graphql')
+    assert conf.endpoint == 'https://migas.nipreps.org'
+
+    config.setup(endpoint='https://migas.nipreps.org/')
+    assert conf.endpoint == 'https://migas.nipreps.org/'
+
+    config.setup(endpoint='https://migas.nipreps.org')
+    assert conf.endpoint == 'https://migas.nipreps.org'

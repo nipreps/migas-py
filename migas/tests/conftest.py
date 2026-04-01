@@ -3,7 +3,7 @@ import pytest
 import migas
 
 TEST_ROOT = "http://localhost:8080/"
-TEST_ENDPOINT = f"{TEST_ROOT}graphql"
+TEST_ENDPOINT = TEST_ROOT
 
 
 
