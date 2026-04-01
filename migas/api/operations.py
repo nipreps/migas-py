@@ -1,6 +1,7 @@
 """
 Create queries and mutations to be sent to the graphql endpoint.
 """
+
 from __future__ import annotations
 
 import dataclasses
@@ -11,9 +12,11 @@ import typing as ty
 from migas.config import Config, logger, telemetry_enabled
 from migas.request import request
 
+
 class QueryParamType(enum.Enum):
     LITERAL = enum.auto()
     TEXT = enum.auto()
+
 
 ERROR = '[migas-py] An error occurred.'
 
@@ -47,9 +50,6 @@ class Operation:
         return cls.query
 
 
-
-
-
 @telemetry_enabled
 def add_project(project: str, project_version: str, **kwargs) -> dict:
     """
@@ -71,27 +71,28 @@ def add_project(project: str, project_version: str, **kwargs) -> dict:
     """
     # ...
     from .rest import add_breadcrumb
+
     return add_breadcrumb(project, project_version, wait=True, **kwargs)
 
 
 class CheckProject(Operation):
-    operation_type = "query"
-    operation_name = "check_project"
+    operation_type = 'query'
+    operation_name = 'check_project'
     query_args = {
-        "project": QueryParamType.TEXT,
-        "project_version": QueryParamType.TEXT,
-        "language": QueryParamType.TEXT,
-        "language_version": QueryParamType.TEXT,
-        "is_ci": QueryParamType.LITERAL,
-        "status": QueryParamType.LITERAL,
-        "status_desc": QueryParamType.TEXT,
-        "error_type": QueryParamType.TEXT,
-        "error_desc": QueryParamType.TEXT,
-        "user_id": QueryParamType.TEXT,
-        "session_id": QueryParamType.TEXT,
-        "container": QueryParamType.LITERAL,
-        "platform": QueryParamType.TEXT,
-        "arguments": QueryParamType.TEXT,
+        'project': QueryParamType.TEXT,
+        'project_version': QueryParamType.TEXT,
+        'language': QueryParamType.TEXT,
+        'language_version': QueryParamType.TEXT,
+        'is_ci': QueryParamType.LITERAL,
+        'status': QueryParamType.LITERAL,
+        'status_desc': QueryParamType.TEXT,
+        'error_type': QueryParamType.TEXT,
+        'error_desc': QueryParamType.TEXT,
+        'user_id': QueryParamType.TEXT,
+        'session_id': QueryParamType.TEXT,
+        'container': QueryParamType.LITERAL,
+        'platform': QueryParamType.TEXT,
+        'arguments': QueryParamType.TEXT,
     }
     selections = ('success', 'flagged', 'latest', 'message')
 
@@ -111,7 +112,7 @@ def check_project(project: str, project_version: str, **kwargs) -> dict:
     """
     query = CheckProject.generate_query(project=project, project_version=project_version, **kwargs)
     logger.debug(query)
-    endpoint = f"{Config.endpoint.rstrip('/')}/graphql"
+    endpoint = f'{Config.endpoint.rstrip("/")}/graphql'
     _, response = request(endpoint, query=query, wait=True)
     logger.debug(response)
     res = _filter_response(response, CheckProject.operation_name)
@@ -122,10 +123,10 @@ class GetUsage(Operation):
     operation_type = 'query'
     operation_name = 'get_usage'
     query_args = {
-        "project": QueryParamType.TEXT,
-        "start": QueryParamType.TEXT,
-        "end": QueryParamType.TEXT,
-        "unique": QueryParamType.LITERAL,
+        'project': QueryParamType.TEXT,
+        'start': QueryParamType.TEXT,
+        'end': QueryParamType.TEXT,
+        'unique': QueryParamType.LITERAL,
     }
 
 
@@ -152,7 +153,7 @@ def get_usage(project: str, start: str, **kwargs) -> dict:
     """
     query = GetUsage.generate_query(project=project, start=start, **kwargs)
     logger.debug(query)
-    endpoint = f"{Config.endpoint.rstrip('/')}/graphql"
+    endpoint = f'{Config.endpoint.rstrip("/")}/graphql'
     _, response = request(endpoint, query=query, wait=True)
     logger.debug(response)
     res = _filter_response(response, GetUsage.operation_name)
@@ -167,22 +168,19 @@ def _introspec(func: ty.Callable, func_locals: dict) -> dict:
     return {
         param: func_locals[param]
         for param, val in sig.parameters.items()
-        if func_locals[param] != val.default and param != "kwargs"
+        if func_locals[param] != val.default and param != 'kwargs'
     }
 
 
 def _filter_response(response: dict | str, operation: str, fallback: dict | None = None):
     if not fallback:
-        fallback = {
-            'success': False,
-            'message': ERROR,
-        }
+        fallback = {'success': False, 'message': ERROR}
 
     if isinstance(response, dict):
-        if "success" in response:
+        if 'success' in response:
             return response
 
-        res = response.get("data")
+        res = response.get('data')
         # success
         if isinstance(res, dict):
             return res.get(operation, fallback)
