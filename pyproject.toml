@@ -71,25 +71,14 @@ __version_tuple__ = version_tuple = {version_tuple!r}
 # Developer tool configurations
 #
 
-[tool.black]
+[tool.ruff]
 line-length = 99
 target-version = ["py311", "py312", "py313"]
 skip-string-normalization = true
 
-[tool.isort]
-profile = "black"
-line_length = 99
-extend_skip = ["_version.py"]
-
-[tool.flake8]
-max-line-length = "99"
-doctests = "False"
-exclude = "*build/"
-ignore = ["W503", "E203"]
-per-file-ignores = [
-    "**/__init__.py : F401",
-    "docs/conf.py : E265",
-]
+[tool.ruff.format]
+quote-style = "single"
+skip-magic-trailing-comma = true
 
 [tool.pytest.ini_options]
 markers = [
