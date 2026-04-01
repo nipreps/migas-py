@@ -41,7 +41,7 @@ jobs:
             docker_version: "20.10"
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: setup Docker
         uses: docker-practice/actions-setup-docker@master
         with:
