@@ -86,11 +86,12 @@ jobs:
       with:
         repository: 'nipreps/migas-server'
         path: 'migas-server'
+        fetch-depth: 0
     - name: Start up local server
       run: |
         cd migas-server
-        pip install hatch
-        make compose-up
+        VERSION=$(uvx --with hatch-vcs hatch version | tail -n1)
+        make compose-up VERSION=$VERSION
       env:
         MIGAS_BYPASS_RATE_LIMIT: '1'
     - name: Verify server is available
