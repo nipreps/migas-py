@@ -32,22 +32,25 @@ dynamic = ["version"]
 
 [project.optional-dependencies]
 dev = [
-    "black",
-    "isort",
+    "ruff",
     "pre-commit",
 ]
 test = [
     "requests",
     "pytest",
     "looseversion",
+    "pytest-cov",
 ]
 
 #
 # Hatch configurations
 #
 
+[tool.hatch.build]
+exclude = ["tests"]
+
 [tool.hatch.build.targets.sdist]
-exclude = [".git_archival.txt"]  # No longer needed in sdist
+exclude = [".git_archival.txt", "tests"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["migas"]
@@ -81,4 +84,18 @@ skip-magic-trailing-comma = true
 [tool.pytest.ini_options]
 markers = [
     "non_idempotent: test cannot be run more than once without resetting db",
+]
+
+[tool.coverage.run]
+source = ["migas"]
+omit = ["migas/_version.py"]
+
+[tool.coverage.report]
+show_missing = true
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if __name__ == .__main__.:",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
 ]

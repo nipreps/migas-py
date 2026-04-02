@@ -57,7 +57,6 @@ jobs:
       INSTALL_TYPE: ${{ matrix.install }}
     steps:
     - uses: actions/checkout@v6
-      if: matrix.install == 'repo' || matrix.install == 'editable'
       with:
         fetch-depth: 0
     - name: Install the latest version of uv
@@ -101,12 +100,18 @@ jobs:
     - name: Run tests
       env:
         MIGAS_FRESH_DB: '1'
-      run: uv run pytest -sv --doctest-modules -k "not non_idempotent" --pyargs migas
+      run: uv run pytest -sv -k "not non_idempotent" --cov=migas --cov-report=xml --cov-report=term-missing tests/
     - name: Show server logs (debug)
       if: always()
       run: docker container logs app
     - name: Stop local server
       run: docker compose -f migas-server/docker-compose.yml down
+    - name: Coverage
+      uses: codecov/codecov-action@v5
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+      if: ${{ always() }}
+
 
   release:
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')

@@ -9,4 +9,4 @@ logs/
 dump.rdb
 mounts/
 _version.py
-
+.coverage
