@@ -97,15 +97,46 @@ If no end date is specified, the current datetime is used.
 </details>
 
 
-### `migas.track_exit`
+### `migas.track`
 ---
-Register an exit function to send a final ping upon termination of the Python interpreter.
-Useful when monitoring a process that may preemptively error.
-The inputs are equivalent to [`add_breadcrumb()`](#migasadd_breadcrumb)
+Begin tracking a process. This function can be used as a context manager (recommended) or as a standalone function.
+
+It automatically:
+1. Sends an initial "Running" breadcrumb.
+2. Registers an `atexit` handler to send a final breadcrumb on clean termination.
+3. Installs signal handlers for `SIGINT` (Ctrl+C) and `SIGTERM` to send a final breadcrumb.
+
+#### Context Manager (Recommended)
+```python
+import yourpkg
+
+import migas
+migas.setup()
+
+with migas.track("your/pkg", yourpkg.__version__):
+    # your code here
+    yourpkg.run()
+```
+Exceptions raised within the block are captured and reported in the final breadcrumb.
+
+#### Standalone
+```python
+import yourpkg
+
+import migas
+migas.setup()
+
+migas.track("your/pkg", yourpkg.__version__)
+```
+
+### `migas.track_exit` (Deprecated)
+---
+Registers an exit function to send a final ping upon termination of the Python interpreter.
+**Note**: This function is deprecated in favor of `migas.track()`.
 
 ## User Control
 
-`migas` can controlled by the following environmental variables:
+`migas` can controlled by the following environment variables:
 
 | Envvar | Description | Value | Default |
 | ---- | ---- | ---- | ---- |
