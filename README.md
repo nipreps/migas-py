@@ -105,6 +105,7 @@ It automatically:
 1. Sends an initial "Running" breadcrumb.
 2. Registers an `atexit` handler to send a final breadcrumb on clean termination.
 3. Installs signal handlers for `SIGINT` (Ctrl+C) and `SIGTERM` to send a final breadcrumb.
+4. Supports framework-specific error parsing via `error_handlers`.
 
 #### Context Manager (Recommended)
 ```python
