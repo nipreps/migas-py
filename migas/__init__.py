@@ -1,19 +1,19 @@
 try:
     from ._version import __version__
 except ImportError:
-    __version__ = "0+unknown"
+    __version__ = '0+unknown'
 
 from .config import print_config, setup
 from .tracker import track, track_exit
 from .api import add_breadcrumb, check_project, get_usage
 
 __all__ = (
-    "__version__",
-    "add_breadcrumb",
-    "check_project",
-    "get_usage",
-    "print_config",
-    "setup",
-    "track",
-    "track_exit",
+    '__version__',
+    'add_breadcrumb',
+    'check_project',
+    'get_usage',
+    'print_config',
+    'setup',
+    'track',
+    'track_exit',
 )

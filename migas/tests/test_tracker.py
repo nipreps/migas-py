@@ -1,7 +1,6 @@
 import pytest
 import signal
-from unittest.mock import MagicMock, patch
-from collections import namedtuple
+from unittest.mock import patch
 from migas.tracker import track, Tracker, _active_trackers
 
 
@@ -48,7 +47,7 @@ def test_tracker_stop_idempotent(mock_requests):
 
 
 def test_start_idempotency(mock_requests):
-    t1 = track('test/project', '1.0.0')
+    track('test/project', '1.0.0')
     assert 'test/project@1.0.0' in _active_trackers
 
     t2 = track('test/project', '1.0.0')
@@ -79,7 +78,7 @@ def test_signal_handling(mock_requests):
             tracker.stop()
 
 
-def test_track_exit_deprecated():
+def test_track_exit_deprecated(mock_requests):
     with pytest.warns(DeprecationWarning, match=r'track_exit\(\) is deprecated'):
         from migas.tracker import track_exit
 

@@ -78,7 +78,6 @@ def test_multiproc_config(tmp_path):
     import subprocess as sp
 
     this_pid = os.getpid()
-    conf = config.Config
     config.setup(endpoint='abcdef')  # populate with custom endpoint
 
     code = """
@@ -112,13 +111,13 @@ def test_print_config(capsys):
 def test_logger(monkeypatch):
     logger = config.logger
     with monkeypatch.context() as m:
-        m.delenv("MIGAS_LOG_LEVEL", raising=False)
+        m.delenv('MIGAS_LOG_LEVEL', raising=False)
         config._init_logger()
         assert logger.name == 'migas-py'
         assert logger.level == 30
 
     with monkeypatch.context() as m:
-        m.setenv("MIGAS_LOG_LEVEL", "INFO")
+        m.setenv('MIGAS_LOG_LEVEL', 'INFO')
         config._init_logger()
         assert logger.level == 20
 

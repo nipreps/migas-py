@@ -1,4 +1,5 @@
 """Utility functions"""
+
 import platform
 import sys
 from pathlib import Path
@@ -16,7 +17,7 @@ def is_container():
 def get_platform_info() -> dict:
     return {
         # 'language_implementation': platform.python_implementation(),
-        'language': "python",
+        'language': 'python',
         'language_version': platform.python_version(),
         'platform': sys.platform,
     }

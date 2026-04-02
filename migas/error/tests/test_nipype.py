@@ -47,13 +47,12 @@ Traceback:
 """
 
 
-class NodeExecutionError(Exception):
-    ...
+class NodeExecutionError(Exception): ...
 
 
 TB = None
 try:
-    raise RuntimeError("Testing")
+    raise RuntimeError('Testing')
 except Exception:
     _, _, TB = sys.exc_info()
 

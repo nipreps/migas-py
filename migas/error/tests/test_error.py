@@ -3,13 +3,12 @@ import sys
 import pytest
 
 
-class CustomException(Exception):
-    ...
+class CustomException(Exception): ...
 
 
 def sample_error_func(etype: type, evalue: str, etb: str):
     ename = etype.__name__
-    if ename == "CustomException":
+    if ename == 'CustomException':
         return {
             'status': 'F',
             'status_desc': 'Custom Error!',
@@ -18,12 +17,15 @@ def sample_error_func(etype: type, evalue: str, etb: str):
         }
 
 
-@pytest.mark.parametrize('error_funcs,error_type,status,error_desc', [
-    (None, None, 'C', None),
-    (None, KeyboardInterrupt, 'S', None),
-    (None, FileNotFoundError, 'F', "i'm a teapot"),
-    ({'CustomException': sample_error_func}, CustomException, 'F', 'Custom Error!'),
-])
+@pytest.mark.parametrize(
+    'error_funcs,error_type,status,error_desc',
+    [
+        (None, None, 'C', None),
+        (None, KeyboardInterrupt, 'S', None),
+        (None, FileNotFoundError, 'F', "i'm a teapot"),
+        ({'CustomException': sample_error_func}, CustomException, 'F', 'Custom Error!'),
+    ],
+)
 def test_inspect_error(monkeypatch, error_funcs, error_type, status, error_desc):
 
     # do not actually call the server
@@ -34,6 +36,7 @@ def test_inspect_error(monkeypatch, error_funcs, error_type, status, error_desc)
         monkeypatch.setattr(sys, 'last_traceback', 'Traceback...', raising=False)
 
     from migas.error import inspect_error
+
     res = inspect_error(error_funcs)
 
     assert res.get('status') == status
