@@ -32,8 +32,7 @@ dynamic = ["version"]
 
 [project.optional-dependencies]
 dev = [
-    "black",
-    "isort",
+    "ruff",
     "pre-commit",
 ]
 test = [
@@ -46,8 +45,11 @@ test = [
 # Hatch configurations
 #
 
+[tool.hatch.build]
+exclude = ["tests"]
+
 [tool.hatch.build.targets.sdist]
-exclude = [".git_archival.txt"]  # No longer needed in sdist
+exclude = [".git_archival.txt", "tests"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["migas"]
