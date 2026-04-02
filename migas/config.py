@@ -19,8 +19,8 @@ File = typing.Union[str, Path]
 
 def _init_logger(level: typing.Optional[str] = None) -> logging.Logger:
     if level is None:
-        level = os.getenv("MIGAS_LOG_LEVEL", logging.WARNING)
-    logger = logging.getLogger("migas-py")
+        level = os.getenv('MIGAS_LOG_LEVEL', logging.WARNING)
+    logger = logging.getLogger('migas-py')
     logger.setLevel(level)
     ch = logging.StreamHandler()
     ch.setLevel(level)
@@ -48,16 +48,13 @@ def telemetry_enabled(func: typing.Callable) -> typing.Callable:
 
     @wraps(func)
     def can_send(*args, **kwargs):
-        if os.getenv("MIGAS_OPTOUT"):
+        if os.getenv('MIGAS_OPTOUT'):
             # do not communicate with server
-            return {
-                "success": False,
-                "errors": [{"message": "migas telemetry is disabled."}],
-            }
+            return {'success': False, 'errors': [{'message': 'migas telemetry is disabled.'}]}
         if not Config._is_setup:
             return {
-                "success": False,
-                "errors": [{"message": "migas setup incomplete - did you call `migas.setup()`?"}],
+                'success': False,
+                'errors': [{'message': 'migas setup incomplete - did you call `migas.setup()`?'}],
             }
         return func(*args, **kwargs)
 
@@ -105,12 +102,7 @@ class Config:
 
     @classmethod
     def init(
-        cls,
-        *,
-        endpoint: str = None,
-        user_id: str = None,
-        session_id: str = None,
-        **kwargs,
+        cls, *, endpoint: str = None, user_id: str = None, session_id: str = None, **kwargs
     ) -> None:
         """
         Setup migas configuration.
@@ -236,7 +228,7 @@ def _try_load(filename) -> bool:
     return False
 
 
-def gen_uuid(uuid_factory: str = "safe", container: typing.Optional[str] = None) -> str:
+def gen_uuid(uuid_factory: str = 'safe', container: typing.Optional[str] = None) -> str:
     """
     Generate a RFC 4122 UUID.
 
@@ -250,9 +242,9 @@ def gen_uuid(uuid_factory: str = "safe", container: typing.Optional[str] = None)
     - Docker images where previous config is unavailable
     """
     in_docker = container == 'docker'
-    if uuid_factory == "safe":
+    if uuid_factory == 'safe':
         return _safe_uuid_factory(in_docker)
-    elif uuid_factory == "random":
+    elif uuid_factory == 'random':
         return str(uuid.uuid4())
     raise NotImplementedError
 
@@ -272,7 +264,7 @@ def _safe_uuid_factory(in_docker: bool = False) -> str:
             # fails in cases of running docker containers as non-root
             user = f'user-{os.getuid()}'
 
-        name = f"{user}@{os.getenv('HOSTNAME', socket.gethostname())}"
+        name = f'{user}@{os.getenv("HOSTNAME", socket.gethostname())}'
     return str(uuid.uuid3(uuid.NAMESPACE_DNS, name))
 
 
@@ -285,14 +277,15 @@ def _extract_container_id() -> typing.Optional[str]:
     import re
 
     docker_id = None
-    mountinfo = Path("/proc/self/mountinfo")
+    mountinfo = Path('/proc/self/mountinfo')
     if not mountinfo.exists():
         return
 
     txt = mountinfo.read_text()
-    m = re.findall(r"(?<=/docker/overlay2/l/)\w*", txt)
+    m = re.findall(r'(?<=/docker/overlay2/l/)\w*', txt)
     if len(m) >= 2:
         docker_id = m[1]  # Second value remains consistent
     return docker_id
+
 
 logger = _init_logger()

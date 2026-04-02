@@ -6,16 +6,12 @@ from looseversion import LooseVersion
 import pytest
 
 import migas
-from migas.api import (
-    add_breadcrumb,
-    check_project,
-    get_usage,
-)
+from migas.api import add_breadcrumb, check_project, get_usage
 
 from .utils import run_server_tests
 
 # skip all tests in module if server is not available
-pytestmark = pytest.mark.skipif(not run_server_tests, reason="Local server not found")
+pytestmark = pytest.mark.skipif(not run_server_tests, reason='Local server not found')
 
 test_project = 'nipreps/nipreps'
 today = dt.now(tz.utc)
@@ -23,9 +19,8 @@ future = (today + timedelta(days=2)).strftime('%Y-%m-%d')
 today = today.strftime('%Y-%m-%d')
 
 
-TEST_ROOT = "http://localhost:8080/"
+TEST_ROOT = 'http://localhost:8080/'
 TEST_ENDPOINT = TEST_ROOT
-
 
 
 @pytest.fixture(autouse=True, scope='module')
@@ -37,12 +32,13 @@ def setup_migas():
     yield
 
 
-
 @pytest.mark.non_idempotent
 def test_migas_add_get():
     res = add_breadcrumb(test_project, migas.__version__)
     # ensure kwargs can be submitted
-    res = add_breadcrumb(test_project, migas.__version__, wait=True, language='cpython', platform='win32')
+    res = add_breadcrumb(
+        test_project, migas.__version__, wait=True, language='cpython', platform='win32'
+    )
     assert res['success'] is True
     # this breadcrumb is not valid, so won't be tracked
     res = add_breadcrumb(test_project, migas.__version__, wait=True, status='wtf')
@@ -74,7 +70,6 @@ def test_check_project():
     assert res['latest']
     # Since we are using a real project (nipreps/nipreps), the latest version
     # on GitHub may be ahead of the current development version.
-    v = LooseVersion(migas.__version__)
     latest = LooseVersion(res['latest'])
     assert latest
     assert res['flagged'] is False

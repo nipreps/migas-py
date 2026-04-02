@@ -1,4 +1,5 @@
 """Stripped down, minimal import way to communicate with server"""
+
 from __future__ import annotations
 
 import json
@@ -16,9 +17,9 @@ MigasResponse = Tuple[int, Union[dict, str]]  # status code, body
 DEFAULT_TIMEOUT = 3
 TIMEOUT_RESPONSE = (
     408,
-    {"data": None, "errors": [{"message": "Connection to server timed out."}]},
+    {'data': None, 'errors': [{'message': 'Connection to server timed out.'}]},
 )
-UNAVAIL_RESPONSE = (503, {"data": None, "errors": [{"message": "Could not connect to server."}]})
+UNAVAIL_RESPONSE = (503, {'data': None, 'errors': [{'message': 'Could not connect to server.'}]})
 
 
 def request(
@@ -28,7 +29,7 @@ def request(
     path: str = None,
     json_data: dict = None,
     timeout: float = None,
-    method: str = "POST",
+    method: str = 'POST',
     chunk_size: int | None = None,
     wait: bool = False,
 ) -> MigasResponse | None:
@@ -61,10 +62,10 @@ def _request(
     path: str = None,
     json_data: dict = None,
     timeout: float = None,
-    method: str = "POST",
+    method: str = 'POST',
     chunk_size: int = None,
     wait: bool = False,
-) -> ETResponse:
+) -> MigasResponse:
     purl = urlparse(url)
     # TODO: 3.10 - Replace with match/case
     if purl.scheme == 'https':
@@ -72,9 +73,9 @@ def _request(
     elif purl.scheme == 'http':
         Connection = HTTPConnection
     else:
-        raise ValueError("URL scheme not supported")
+        raise ValueError('URL scheme not supported')
 
-    timeout = timeout or float(os.getenv("MIGAS_TIMEOUT", DEFAULT_TIMEOUT))
+    timeout = timeout or float(os.getenv('MIGAS_TIMEOUT', DEFAULT_TIMEOUT))
     conn = Connection(purl.netloc, timeout=timeout)
     headers = {
         'User-Agent': f'migas-client/{__version__}',
@@ -84,9 +85,9 @@ def _request(
     }
     body = None
     if query:
-        body = json.dumps({"query": query}).encode("utf-8")
+        body = json.dumps({'query': query}).encode('utf-8')
     elif json_data:
-        body = json.dumps(json_data).encode("utf-8")
+        body = json.dumps(json_data).encode('utf-8')
 
     if body:
         headers['Content-Length'] = len(body)
@@ -119,22 +120,16 @@ def _request(
     finally:
         conn.close()
 
-    if body and response.headers.get("content-type", "").startswith("application/json"):
+    if body and response.headers.get('content-type', '').startswith('application/json'):
         body = json.loads(body)
 
-    if not response.headers.get("X-Backend-Server"):
-        warnings.warn(
-            "migas server is incorrectly configured.",
-            UserWarning,
-            stacklevel=1,
-        )
+    if not response.headers.get('X-Backend-Server'):
+        warnings.warn('migas server is incorrectly configured.', UserWarning, stacklevel=1)
     return response.status, body
 
 
 def _read_response(
-    response: HTTPResponse,
-    encoding: Optional[str] = None,
-    chunk_size: Optional[int] = None
+    response: HTTPResponse, encoding: Optional[str] = None, chunk_size: Optional[int] = None
 ) -> str:
     """
     Read and aggregate the response body.
