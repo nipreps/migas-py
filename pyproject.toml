@@ -73,8 +73,6 @@ __version_tuple__ = version_tuple = {version_tuple!r}
 
 [tool.ruff]
 line-length = 99
-target-version = ["py311", "py312", "py313"]
-skip-string-normalization = true
 
 [tool.ruff.format]
 quote-style = "single"
