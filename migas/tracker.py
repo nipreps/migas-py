@@ -4,6 +4,7 @@ import atexit
 import logging
 import signal
 import threading
+from contextlib import ContextDecorator
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -21,21 +22,39 @@ _active_trackers: dict[str, Tracker] = {}
 
 
 @dataclass
-class Tracker:
+class Tracker(ContextDecorator):
     project: str
     version: str
     error_handlers: str | dict | list | None = None
     signals: tuple[signal.Signals, ...] = (signal.SIGINT, signal.SIGTERM)
+    init_ping: bool = True
     crumb_kwargs: dict = field(default_factory=dict)
 
     # Propagate existing handlers
     _previous_handlers: dict[int, Any] = field(default_factory=dict, repr=False)
+    _started: bool = field(default=False, init=False, repr=False)
     _stopped: bool = field(default=False, repr=False)
 
     def __post_init__(self):
         self.error_handlers = resolve_error_handlers(self.error_handlers)
         self._install_atexit()
         self._install_signals()
+
+    def start(self):
+        """Send the initial breadcrumb and register tracker to avoid repeats."""
+        if self._started or self._stopped:
+            return
+
+        from migas.api import add_breadcrumb
+
+        if self.init_ping:
+            add_breadcrumb(
+                self.project, self.version, status='R', status_desc='Started', **self.crumb_kwargs
+            )
+
+        key = f'{self.project}@{self.version}'
+        _active_trackers[key] = self
+        self._started = True
 
     def _install_atexit(self):
         atexit.register(self._on_exit)
@@ -107,6 +126,7 @@ class Tracker:
         _active_trackers.pop(key, None)
 
     def __enter__(self):
+        self.start()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -123,27 +143,25 @@ def track(
     **kwargs,
 ) -> Tracker:
     """
-    Begin tracking a process. Returns a Tracker that works as a context manager
-    or standalone (atexit + signal handlers).
-    """
-    from migas.api import add_breadcrumb
+    Begin tracking a process. Returns a Tracker that works as a context manager,
+    decorator, or standalone (atexit + signal handlers).
 
+    If a tracker for the specified project and version is already active, that
+    instance is returned.
+    """
     key = f'{project}@{version}'
     if key in _active_trackers:
-        _active_trackers[key].stop()
-
-    # Send initial "Running" breadcrumb
-    if init_ping:
-        add_breadcrumb(project, version, status='R', status_desc='Started', **kwargs)
+        return _active_trackers[key]
 
     tracker = Tracker(
         project=project,
         version=version,
         error_handlers=error_handlers,
         signals=signals,
+        init_ping=init_ping,
         crumb_kwargs=kwargs,
     )
-    _active_trackers[key] = tracker
+    tracker.start()
     return tracker
 
 

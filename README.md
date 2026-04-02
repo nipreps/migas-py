@@ -99,7 +99,7 @@ If no end date is specified, the current datetime is used.
 
 ### `migas.track`
 ---
-Begin tracking a process. This function can be used as a context manager (recommended) or as a standalone function.
+Begin tracking a process. This function can be used as a decorator (main function), context manager (recommended for tasks), or as a standalone function.
 
 It automatically:
 1. Sends an initial "Running" breadcrumb.
@@ -107,10 +107,22 @@ It automatically:
 3. Installs signal handlers for `SIGINT` (Ctrl+C) and `SIGTERM` to send a final breadcrumb.
 4. Supports framework-specific error parsing via `error_handlers`.
 
-#### Context Manager (Recommended)
+**Note**: `migas.track()` is idempotent per-project. If a tracker for the same project and version is already active (e.g., in a nested call), the existing instance is returned to avoid redundant telemetry.
+
+#### Decorator
 ```python
 import yourpkg
+import migas
+migas.setup()
 
+@migas.track("your/pkg", yourpkg.__version__)
+def main():
+    yourpkg.run()
+```
+
+#### Context Manager
+```python
+import yourpkg
 import migas
 migas.setup()
 
@@ -123,7 +135,6 @@ Exceptions raised within the block are captured and reported in the final breadc
 #### Standalone
 ```python
 import yourpkg
-
 import migas
 migas.setup()
 
