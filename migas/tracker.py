@@ -7,7 +7,12 @@ import threading
 from dataclasses import dataclass, field
 from typing import Any
 
-from migas.error import inspect_error, status_from_exception, status_from_signal
+from migas.error import (
+    inspect_error,
+    resolve_error_handlers,
+    status_from_exception,
+    status_from_signal,
+)
 
 logger = logging.getLogger('migas-py')
 
@@ -19,15 +24,16 @@ _active_trackers: dict[str, Tracker] = {}
 class Tracker:
     project: str
     version: str
-    error_funcs: dict | None = None
+    error_handlers: str | dict | list | None = None
     signals: tuple[signal.Signals, ...] = (signal.SIGINT, signal.SIGTERM)
-    kwargs: dict = field(default_factory=dict)
+    crumb_kwargs: dict = field(default_factory=dict)
 
     # Propagate existing handlers
     _previous_handlers: dict[int, Any] = field(default_factory=dict, repr=False)
     _stopped: bool = field(default=False, repr=False)
 
     def __post_init__(self):
+        self.error_handlers = resolve_error_handlers(self.error_handlers)
         self._install_atexit()
         self._install_signals()
 
@@ -50,14 +56,14 @@ class Tracker:
         """atexit callback — uses inspect_error() as best-effort fallback."""
         if self._stopped:
             return
-        status_kwargs = inspect_error(self.error_funcs)
-        self._send_final({**self.kwargs, **status_kwargs})
+        status_kwargs = inspect_error(self.error_handlers)
+        self._send_final(**self.crumb_kwargs, **status_kwargs)
 
     def _on_signal(self, signum, frame):
         """Signal handler — synthesizes status from signal number."""
         if not self._stopped:
             status_kwargs = status_from_signal(signum)
-            self._send_final({**self.kwargs, **status_kwargs})
+            self._send_final(**self.crumb_kwargs, **status_kwargs)
 
         # Chain to previous handler
         prev = self._previous_handlers.get(signum, signal.SIG_DFL)
@@ -68,7 +74,7 @@ class Tracker:
             signal.signal(signum, signal.SIG_DFL)
             signal.raise_signal(signum)
 
-    def _send_final(self, kwargs):
+    def _send_final(self, **kwargs):
         """Send the final breadcrumb synchronously."""
         self._stopped = True
         from migas.api.rest import Breadcrumb
@@ -83,8 +89,8 @@ class Tracker:
         """Manually send final breadcrumb and deregister. Idempotent."""
         if self._stopped:
             return
-        status_kwargs = status_from_exception(exc, self.error_funcs)
-        self._send_final({**self.kwargs, **status_kwargs})
+        status_kwargs = status_from_exception(exc, self.error_handlers)
+        self._send_final(**self.crumb_kwargs, **status_kwargs)
         self._cleanup()
 
     def _cleanup(self):
@@ -111,7 +117,7 @@ class Tracker:
 def track(
     project: str,
     version: str,
-    error_funcs: dict | None = None,
+    error_handlers: str | dict | list | None = None,
     signals: tuple[signal.Signals, ...] = (signal.SIGINT, signal.SIGTERM),
     init_ping: bool = True,
     **kwargs,
@@ -131,13 +137,19 @@ def track(
         add_breadcrumb(project, version, status='R', status_desc='Started', **kwargs)
 
     tracker = Tracker(
-        project=project, version=version, error_funcs=error_funcs, signals=signals, kwargs=kwargs
+        project=project,
+        version=version,
+        error_handlers=error_handlers,
+        signals=signals,
+        crumb_kwargs=kwargs,
     )
     _active_trackers[key] = tracker
     return tracker
 
 
-def track_exit(project: str, version: str, error_funcs: dict | None = None, **kwargs) -> None:
+def track_exit(
+    project: str, version: str, error_handlers: str | dict | list | None = None, **kwargs
+) -> None:
     """
     Registers a final breadcrumb to be sent upon process termination.
 
@@ -149,4 +161,12 @@ def track_exit(project: str, version: str, error_funcs: dict | None = None, **kw
     warnings.warn(
         'track_exit() is deprecated, use migas.track() instead', DeprecationWarning, stacklevel=2
     )
-    track(project, version, error_funcs, **kwargs)
+    if kwargs.get('error_funcs') and error_handlers is None:
+        # Old API compatiblity
+        warnings.warn(
+            'error_funcs is deprecated, use error_handlers instead',
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        error_handlers = kwargs.pop('error_funcs')
+    track(project, version, error_handlers, **kwargs)

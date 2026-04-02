@@ -87,3 +87,33 @@ def test_track_exit_deprecated(mock_requests):
         key = 'test/project@1.0.0'
         if key in _active_trackers:
             _active_trackers[key].stop()
+
+
+def test_track_nipype_preset(mock_requests):
+    class NodeExecutionError(Exception):
+        pass
+
+    # Simulate a Nipype-style NodeExecutionError traceback
+    traceback = "Exception raised while executing Node mynode\nTraceback: File '...', line 1, in <module>\nValueError: oops"
+    with pytest.raises(NodeExecutionError):
+        with track('test/project', '1.0.0', error_handlers='nipype'):
+            raise NodeExecutionError(traceback)
+
+    assert mock_requests.request.called
+    payload = mock_requests.request.call_args[1]['json_data']
+    assert 'mynode' in payload['proc']['status_desc']
+    assert 'ValueError: oops' in payload['proc']['error_desc']
+
+
+def test_inheritance_dispatch(mock_requests):
+    def base_handler(etype, evalue, etb):
+        return {'status': 'F', 'status_desc': 'Caught by base'}
+
+    # Use actual class as key
+    with pytest.raises(ValueError):
+        with track('test/project', '1.0.0', error_handlers={Exception: base_handler}):
+            raise ValueError('Specific error')
+
+    assert mock_requests.request.called
+    payload = mock_requests.request.call_args[1]['json_data']
+    assert payload['proc']['status_desc'] == 'Caught by base'
