@@ -57,7 +57,6 @@ jobs:
       INSTALL_TYPE: ${{ matrix.install }}
     steps:
     - uses: actions/checkout@v6
-      if: matrix.install == 'repo' || matrix.install == 'editable'
       with:
         fetch-depth: 0
     - name: Install the latest version of uv
