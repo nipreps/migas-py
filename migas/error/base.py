@@ -41,9 +41,16 @@ def status_from_exception(exc: BaseException | None, error_funcs: dict | None = 
     evalue = exc.args[0] if exc.args else str(exc)
     etb = exc.__traceback__
 
-    if isinstance(error_funcs, dict) and ename in error_funcs:
-        func = error_funcs[ename]
-        return func(type(exc), evalue, etb)
+    if isinstance(error_funcs, dict):
+        # 1. Try class-based matches (preferred)
+        for key, func in error_funcs.items():
+            if isinstance(key, type) and issubclass(key, BaseException) and isinstance(exc, key):
+                return func(type(exc), evalue, etb)
+
+        # 2. Fallback to string-based matches
+        if ename in error_funcs:
+            func = error_funcs[ename]
+            return func(type(exc), evalue, etb)
 
     if isinstance(exc, (KeyboardInterrupt, BdbQuit)):
         return {'status': 'S', 'status_desc': 'Suspended'}
