@@ -37,12 +37,13 @@ def test_migas_add_get():
     res = get_usage(test_project, start=today)
     initial_hits = res['hits'] if res['success'] else 0
 
-    res = add_breadcrumb(test_project, migas.__version__)
+    res = add_breadcrumb(test_project, migas.__version__, wait=True)
+    assert res['success'] is True, res.get('message')
     # ensure kwargs can be submitted
     res = add_breadcrumb(
         test_project, migas.__version__, wait=True, language='cpython', platform='win32'
     )
-    assert res['success'] is True
+    assert res['success'] is True, res.get('message')
     # this breadcrumb is not valid, so won't be tracked
     res = add_breadcrumb(test_project, migas.__version__, wait=True, status='wtf')
     assert res['success'] is False
