@@ -98,9 +98,7 @@ jobs:
       env:
         MIGAS_SERVER_NAME: app
     - name: Run tests
-      env:
-        MIGAS_FRESH_DB: '1'
-      run: uv run pytest -sv -k "not non_idempotent" --cov=migas --cov-report=xml --cov-report=term-missing tests/
+      run: uv run pytest -sv --cov=migas --cov-report=xml --cov-report=term-missing tests/
     - name: Show server logs (debug)
       if: always()
       run: docker container logs app
