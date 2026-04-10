@@ -19,8 +19,7 @@ future = (today + timedelta(days=2)).strftime('%Y-%m-%d')
 today = today.strftime('%Y-%m-%d')
 
 
-TEST_ROOT = 'http://localhost:8080/'
-TEST_ENDPOINT = TEST_ROOT
+TEST_ENDPOINT = 'http://localhost:8080/'
 
 
 @pytest.fixture(autouse=True, scope='module')
