@@ -148,3 +148,35 @@ def test_safe_uuid_saves(monkeypatch, tmp_path):
 
     assert user_id_file.exists()
     assert user_id_file.read_text() == result
+
+
+def test_optout_no_user_id(monkeypatch, tmp_path):
+    """If telemetry is disabled, no user ID is generated and no persistent file is touched."""
+    persistent_id = str(uuid.uuid4())
+    user_id_file = tmp_path / 'migas' / 'user_id'
+    user_id_file.parent.mkdir()
+    user_id_file.write_text(persistent_id)
+
+    monkeypatch.setattr(config, '_get_user_id_file', lambda: user_id_file)
+    monkeypatch.setenv('MIGAS_OPTOUT', '1')
+
+    assert config._safe_uuid_factory() is None
+    assert user_id_file.read_text() == persistent_id  # file untouched
+
+
+def test_clear_user_id(monkeypatch, tmp_path):
+    """clear_user_id removes the persistent file and resets Config.user_id."""
+    user_id_file = tmp_path / 'migas' / 'user_id'
+    user_id_file.parent.mkdir()
+    user_id_file.write_text(str(uuid.uuid4()))
+
+    monkeypatch.setattr(config, '_get_user_id_file', lambda: user_id_file)
+    config.Config.user_id = 'some-id'
+
+    config.clear_user_id()
+
+    assert not user_id_file.exists()
+    assert config.Config.user_id is None
+
+    # idempotent — no file present, no raise
+    config.clear_user_id()
