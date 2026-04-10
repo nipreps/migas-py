@@ -19,8 +19,7 @@ future = (today + timedelta(days=2)).strftime('%Y-%m-%d')
 today = today.strftime('%Y-%m-%d')
 
 
-TEST_ROOT = 'http://localhost:8080/'
-TEST_ENDPOINT = TEST_ROOT
+TEST_ENDPOINT = 'http://localhost:8080/'
 
 
 @pytest.fixture(autouse=True, scope='module')
@@ -32,14 +31,18 @@ def setup_migas():
     yield
 
 
-@pytest.mark.non_idempotent
 def test_migas_add_get():
-    res = add_breadcrumb(test_project, migas.__version__)
+    # capture initial usage
+    res = get_usage(test_project, start=today)
+    initial_hits = res['hits'] if res['success'] else 0
+
+    res = add_breadcrumb(test_project, migas.__version__, wait=True)
+    assert res['success'] is True, res.get('message')
     # ensure kwargs can be submitted
     res = add_breadcrumb(
         test_project, migas.__version__, wait=True, language='cpython', platform='win32'
     )
-    assert res['success'] is True
+    assert res['success'] is True, res.get('message')
     # this breadcrumb is not valid, so won't be tracked
     res = add_breadcrumb(test_project, migas.__version__, wait=True, status='wtf')
     assert res['success'] is False
@@ -48,7 +51,7 @@ def test_migas_add_get():
     res = get_usage(test_project, start=today)
     assert res['success'] is True
     all_usage = res['hits']
-    assert all_usage == 2
+    assert all_usage == initial_hits + 2
 
     res = get_usage(test_project, start=today, unique=True)
     assert res['success'] is True

@@ -82,9 +82,7 @@ quote-style = "single"
 skip-magic-trailing-comma = true
 
 [tool.pytest.ini_options]
-markers = [
-    "non_idempotent: test cannot be run more than once without resetting db",
-]
+markers = []
 
 [tool.coverage.run]
 source = ["migas"]
