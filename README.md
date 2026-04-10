@@ -146,15 +146,51 @@ migas.track("your/pkg", yourpkg.__version__)
 Registers an exit function to send a final ping upon termination of the Python interpreter.
 **Note**: This function is deprecated in favor of `migas.track()`.
 
+### `migas.clear_user_id`
+---
+Remove the persistent user identity file and reset the in-memory user ID.
+After calling this, the next `setup()` will generate a fresh user ID.
+
+```python
+import migas
+migas.clear_user_id()
+```
+
 ## User Control
 
-`migas` can controlled by the following environment variables:
+### User identity
+
+To provide stable usage statistics across sessions and — on HPC systems — across nodes,
+`migas` derives a user ID from your username and hostname and saves it to:
+
+```
+~/.config/migas/user_id   # or $XDG_CONFIG_HOME/migas/user_id
+```
+
+This file contains only a UUID and no other personal information. It can be deleted at any
+time without affecting the tools that use `migas`. To remove it programmatically:
+
+```python
+import migas
+migas.clear_user_id()
+```
+
+### Opting out
+
+Setting `MIGAS_OPTOUT` disables all telemetry: no data is sent, no user ID is generated,
+and the persistent identity file is neither read nor written.
+
+```bash
+export MIGAS_OPTOUT=1
+```
+
+### Environment variables
 
 | Envvar | Description | Value | Default |
 | ---- | ---- | ---- | ---- |
-| `MIGAS_OPTOUT` | Disable telemetry collection | Any | None
-| `MIGAS_TIMEOUT` | Seconds to wait for server response | Number >= 0 | 5
-| `MIGAS_LOG_LEVEL` | Logger level | [Logging levels](https://docs.python.org/3/library/logging.html#levels) | WARNING
+| `MIGAS_OPTOUT` | Disable all telemetry | Any | None |
+| `MIGAS_TIMEOUT` | Seconds to wait for server response | Number >= 0 | 5 |
+| `MIGAS_LOG_LEVEL` | Logger level | [Logging levels](https://docs.python.org/3/library/logging.html#levels) | WARNING |
 
 
 ## Configuration

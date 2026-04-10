@@ -96,12 +96,12 @@ jobs:
     - name: Verify server is available
       run: docker port ${MIGAS_SERVER_NAME} && sleep 10 && docker ps
       env:
-        MIGAS_SERVER_NAME: app
+        MIGAS_SERVER_NAME: migas-server
     - name: Run tests
       run: uv run pytest -sv --cov=migas --cov-report=xml --cov-report=term-missing tests/
     - name: Show server logs (debug)
       if: always()
-      run: docker container logs app
+      run: docker container logs migas-server
     - name: Stop local server
       run: docker compose -f migas-server/docker-compose.yml down
     - name: Coverage
