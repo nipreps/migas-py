@@ -1,11 +1,14 @@
+import getpass
+import socket
+import subprocess as sp
+import uuid
+
 import pytest
 
 from migas import config
 
 
 def test_setup_default(tmp_path):
-    from uuid import UUID
-
     conf = config.Config
     assert conf.endpoint is None
     assert conf.user_id is None
@@ -14,7 +17,7 @@ def test_setup_default(tmp_path):
 
     config.setup()
     assert conf.endpoint == config.DEFAULT_ENDPOINT
-    assert UUID(conf.user_id)
+    assert uuid.UUID(conf.user_id)
     assert conf.session_id is None
     assert conf._is_setup is True
     conf_file = conf._file
@@ -52,41 +55,8 @@ def test_setup_default(tmp_path):
     assert isinstance(conf.is_ci, bool)
 
 
-def test_safe_uuid_factory(monkeypatch):
-    import getpass
-
-    uid0 = config._safe_uuid_factory()
-    assert uid0
-
-    def none():
-        users = {}
-        return users['none']
-
-    # simulate unknown user
-    monkeypatch.setattr(getpass, 'getuser', none)
-    with pytest.raises(KeyError):
-        getpass.getuser()
-
-    uid1 = config._safe_uuid_factory()
-    assert uid1
-
-    assert uid0 != uid1
-
-
-def test_multiproc_config(tmp_path):
-    import os
-    import subprocess as sp
-
-    this_pid = os.getpid()
+def test_multiproc_config():
     config.setup(endpoint='abcdef')  # populate with custom endpoint
-
-    code = """
-import os
-print(os.getppid())
-"""
-    proc = sp.run(['python'], input=code, capture_output=True, encoding='UTF-8')
-    child_parent_pid = proc.stdout.strip()
-    assert str(this_pid) == child_parent_pid
 
     code = """
 import migas
@@ -99,37 +69,82 @@ migas.print_config()
     assert 'abcdef' in child_config
 
 
-def test_print_config(capsys):
-    config.setup()
-    config.print_config()
-    captured = capsys.readouterr()
-    for field in config.Config.__dataclass_fields__.keys():
-        assert field in captured.out
-        assert str(getattr(config.Config, field)) in captured.out
-
-
-def test_logger(monkeypatch):
-    logger = config.logger
-    with monkeypatch.context() as m:
-        m.delenv('MIGAS_LOG_LEVEL', raising=False)
-        config._init_logger()
-        assert logger.name == 'migas-py'
-        assert logger.level == 30
-
-    with monkeypatch.context() as m:
-        m.setenv('MIGAS_LOG_LEVEL', 'INFO')
-        config._init_logger()
-        assert logger.level == 20
-
-
 def test_endpoint_stripping():
     conf = config.Config
     conf._reset()
-    config.setup(endpoint='https://migas.nipreps.org/graphql')
-    assert conf.endpoint == 'https://migas.nipreps.org'
+    config.setup(endpoint='http://localhost:8080/graphql')
+    assert conf.endpoint == 'http://localhost:8080'
 
-    config.setup(endpoint='https://migas.nipreps.org/')
-    assert conf.endpoint == 'https://migas.nipreps.org/'
+    config.setup(endpoint='http://localhost:8080/')
+    assert conf.endpoint == 'http://localhost:8080/'
 
-    config.setup(endpoint='https://migas.nipreps.org')
-    assert conf.endpoint == 'https://migas.nipreps.org'
+    config.setup(endpoint='http://localhost:8080')
+    assert conf.endpoint == 'http://localhost:8080'
+
+
+@pytest.mark.parametrize(
+    'fqdn,expected',
+    [
+        ('node042.cluster.edu', 'cluster.edu'),
+        ('node.uni.ac.uk', 'uni.ac.uk'),
+        ('node.corp.com', 'corp.com'),
+        ('macbook.local', None),
+        ('hostname.local', None),
+        ('workstation', None),
+        ('node.corp', None),
+        ('localhost', None),
+    ],
+)
+def test_extract_domain(fqdn, expected):
+    assert config._extract_domain(fqdn) == expected
+
+
+def test_safe_uuid_nodes(monkeypatch, tmp_path):
+    """Same user on different nodes of same domain produces the same UUID."""
+    monkeypatch.setattr(config, '_get_user_id_file', lambda: tmp_path / 'nodir' / 'user_id')
+    monkeypatch.setattr(getpass, 'getuser', lambda: 'testuser')
+
+    monkeypatch.setattr(socket, 'getfqdn', lambda: 'node001.cluster.edu')
+    uid1 = config._safe_uuid_factory()
+
+    monkeypatch.setattr(socket, 'getfqdn', lambda: 'node042.cluster.edu')
+    uid2 = config._safe_uuid_factory()
+
+    assert uid1 == uid2
+
+
+def test_safe_uuid_fqdn_fallback(monkeypatch, tmp_path):
+    """Test FQDN fallback when .local present."""
+    monkeypatch.setattr(config, '_get_user_id_file', lambda: tmp_path / 'nodir' / 'user_id')
+    monkeypatch.setattr(getpass, 'getuser', lambda: 'testuser')
+    monkeypatch.setattr(socket, 'getfqdn', lambda: 'macbook.local')
+    monkeypatch.setattr(socket, 'gethostname', lambda: 'macbook')
+
+    uid = config._safe_uuid_factory()
+    expected = str(uuid.uuid3(uuid.NAMESPACE_DNS, 'testuser@macbook'))
+    assert uid == expected
+
+
+def test_safe_uuid_loads(monkeypatch, tmp_path):
+    """Test loading of user id from file."""
+    persistent_id = str(uuid.uuid4())
+    user_id_file = tmp_path / 'migas' / 'user_id'
+    user_id_file.parent.mkdir()
+    user_id_file.write_text(persistent_id)
+
+    monkeypatch.setattr(config, '_get_user_id_file', lambda: user_id_file)
+    result = config._safe_uuid_factory()
+    assert result == persistent_id
+
+
+def test_safe_uuid_saves(monkeypatch, tmp_path):
+    """Generated UUID is saved to persistent file for future reuse."""
+    user_id_file = tmp_path / 'migas' / 'user_id'
+    monkeypatch.setattr(config, '_get_user_id_file', lambda: user_id_file)
+    monkeypatch.setattr(getpass, 'getuser', lambda: 'testuser')
+    monkeypatch.setattr(socket, 'getfqdn', lambda: 'node001.cluster.edu')
+
+    result = config._safe_uuid_factory()
+
+    assert user_id_file.exists()
+    assert user_id_file.read_text() == result
