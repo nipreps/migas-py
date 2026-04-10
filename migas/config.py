@@ -129,7 +129,7 @@ class Config:
                     uuid.UUID(user_id)
                 except ValueError:
                     user_id = None
-            cls.user_id = user_id if user_id is not None else gen_uuid(container=cls.container)
+            cls.user_id = user_id or gen_uuid(container=cls.container)
 
         # Do not set automatically, leave to developers
         if session_id is not None:
@@ -226,6 +226,22 @@ def print_config() -> None:
         print(f'{field.name}: {getattr(Config, field.name)}')
 
 
+def clear_user_id() -> None:
+    """
+    Remove persistent user identity and reset the in-memory user ID.
+
+    After calling this, the next setup() will generate a new user ID (or an ephemeral
+    one if MIGAS_OPTOUT is set).
+    """
+    user_id_file = _get_user_id_file()
+    if user_id_file is not None:
+        try:
+            user_id_file.unlink(missing_ok=True)
+        except OSError:
+            pass
+    Config.user_id = None
+
+
 def _try_load(filename) -> bool:
     if Path(filename).exists():
         # load and use
@@ -233,7 +249,7 @@ def _try_load(filename) -> bool:
     return False
 
 
-def gen_uuid(uuid_factory: str = 'safe', container: str | None = None) -> str:
+def gen_uuid(uuid_factory: str = 'safe', container: str | None = None) -> str | None:
     """
     Generate a RFC 4122 UUID.
 
@@ -273,17 +289,23 @@ def _extract_domain(fqdn: str) -> str | None:
     return '.'.join(parts[1:])
 
 
-def _safe_uuid_factory() -> str:
+def _safe_uuid_factory() -> str | None:
     """
     Generate or retrieve a stable user UUID.
 
-    Priority:
+    When MIGAS_OPTOUT is set, returns an ephemeral random UUID — no persistent file
+    is read or written, and no identifying information (user@hostname) is used.
+
+    Otherwise, priority is:
     1. Load from persistent file (~/.config/migas/user_id or $XDG_CONFIG_HOME/migas/user_id)
     2. Derive from user@domain using FQDN (stable across HPC nodes on the same cluster)
     3. Fall back to user@hostname (current behaviour, works for local/laptop use)
 
     The generated UUID is saved to the persistent file for future reuse when possible.
     """
+    if os.getenv('MIGAS_OPTOUT'):
+        return None
+
     user_id_file = _get_user_id_file()
 
     # 1. Try loading config file
