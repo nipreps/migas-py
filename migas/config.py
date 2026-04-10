@@ -1,6 +1,9 @@
+import getpass
+import contextlib
 import json
 import logging
 import os
+import socket
 import typing
 import uuid
 from dataclasses import dataclass, fields
@@ -111,7 +114,7 @@ class Config:
         """
         if cls._pid is None:
             cls._pid = os.getpid()
-        endpoint = endpoint or DEFAULT_ENDPOINT
+        endpoint = endpoint if isinstance(endpoint, str) and endpoint else DEFAULT_ENDPOINT
         if endpoint.endswith('/graphql'):
             endpoint = endpoint.removesuffix('/graphql')
         cls.endpoint = endpoint
@@ -121,18 +124,19 @@ class Config:
                 setattr(cls, param, val)
 
         if user_id is not None or cls.user_id is None:
-            try:
-                uuid.UUID(user_id)
-                cls.user_id = user_id
-            except Exception:
-                cls.user_id = gen_uuid(container=cls.container)
+            if user_id is not None:
+                try:
+                    uuid.UUID(user_id)
+                except ValueError:
+                    user_id = None
+            cls.user_id = user_id if user_id is not None else gen_uuid(container=cls.container)
 
         # Do not set automatically, leave to developers
         if session_id is not None:
             try:
                 uuid.UUID(session_id)
                 cls.session_id = session_id
-            except Exception:
+            except (ValueError, AttributeError):
                 pass
 
     @classmethod
@@ -170,6 +174,7 @@ class Config:
         cls._is_setup = False
 
 
+@suppress_errors
 def setup(
     *,
     endpoint: str = None,
@@ -228,64 +233,98 @@ def _try_load(filename) -> bool:
     return False
 
 
-def gen_uuid(uuid_factory: str = 'safe', container: typing.Optional[str] = None) -> str:
+def gen_uuid(uuid_factory: str = 'safe', container: str | None = None) -> str:
     """
     Generate a RFC 4122 UUID.
 
     Depending on what `uuid_factory` is provided, the UUID will be generated differently:
-    - `safe`: This is multiprocessing safe, and uses system information.
-    - `random`: This is random, and may run into problems if setup is called across multiple
-    processes.
-
-    Hard cases to think about:
-    - HPCs where HOSTNAME envvar is not set
-    - Docker images where previous config is unavailable
+    - `safe`: Stable across processes; prefers persistent file, then FQDN domain, then hostname.
+    - `random`: Random UUID; may collide across multiprocessing setups.
     """
-    in_docker = container == 'docker'
     if uuid_factory == 'safe':
-        return _safe_uuid_factory(in_docker)
+        return _safe_uuid_factory()
     elif uuid_factory == 'random':
         return str(uuid.uuid4())
     raise NotImplementedError
 
 
-def _safe_uuid_factory(in_docker: bool = False) -> str:
-    import getpass
-    import socket
-
-    name = None
-    if in_docker:
-        name = _extract_container_id()
-
-    if not name:
-        try:
-            user = getpass.getuser()
-        except KeyError:
-            # fails in cases of running docker containers as non-root
-            user = f'user-{os.getuid()}'
-
-        name = f'{user}@{os.getenv("HOSTNAME", socket.gethostname())}'
-    return str(uuid.uuid3(uuid.NAMESPACE_DNS, name))
+def _get_user_id_file() -> Path | None:
+    """Return XDG-aware path for the persistent user identity file, or None if unavailable."""
+    try:
+        xdg = os.getenv('XDG_CONFIG_HOME')
+        config_home = Path(xdg) if xdg else (Path.home() / '.config')
+        return config_home / 'migas' / 'user_id'
+    except Exception:
+        return None
 
 
-def _extract_container_id() -> typing.Optional[str]:
+def _extract_domain(fqdn: str) -> str | None:
     """
-    Query Docker mountinfo for persistent ID across runs.
+    Extract a stable domain from a Fully Qualified Domain Name, stripping the node/host prefix.
 
-    This ID will only remain the same between invocations of the same container.
+    Returns None for single-label names, mDNS .local addresses, and two-part
+    names (ambiguous — could be a Windows workgroup name).
     """
-    import re
+    parts = fqdn.split('.')
+    if len(parts) < 3:
+        return None
+    if parts[-1] == 'local':
+        return None
+    return '.'.join(parts[1:])
 
-    docker_id = None
-    mountinfo = Path('/proc/self/mountinfo')
-    if not mountinfo.exists():
-        return
 
-    txt = mountinfo.read_text()
-    m = re.findall(r'(?<=/docker/overlay2/l/)\w*', txt)
-    if len(m) >= 2:
-        docker_id = m[1]  # Second value remains consistent
-    return docker_id
+def _safe_uuid_factory() -> str:
+    """
+    Generate or retrieve a stable user UUID.
+
+    Priority:
+    1. Load from persistent file (~/.config/migas/user_id or $XDG_CONFIG_HOME/migas/user_id)
+    2. Derive from user@domain using FQDN (stable across HPC nodes on the same cluster)
+    3. Fall back to user@hostname (current behaviour, works for local/laptop use)
+
+    The generated UUID is saved to the persistent file for future reuse when possible.
+    """
+    user_id_file = _get_user_id_file()
+
+    # 1. Try loading config file
+    if user_id_file and user_id_file.is_file():
+        with contextlib.suppress(OSError, ValueError):
+            user_id = user_id_file.read_text().strip()
+            uuid.UUID(user_id)  # validate
+            return user_id
+
+    # 2. Otherwise generate
+    user_id = _generate_stable_uuid()
+
+    # 3. Try to preserve user id
+    if user_id_file:
+        with contextlib.suppress(OSError):
+            user_id_file.parent.mkdir(parents=True, exist_ok=True)
+            user_id_file.write_text(user_id)
+
+    return user_id
+
+
+def _get_username() -> str:
+    """Get the current username, with fallback to UID-based name."""
+    try:
+        return getpass.getuser()
+    except (KeyError, OSError):
+        return f'user-{os.getuid()}'
+
+
+def _generate_stable_uuid() -> str:
+    """Generate a stable UUID based on user and system information, or random if it fails."""
+    try:
+        user = _get_username()
+        fqdn = socket.getfqdn()
+        domain = _extract_domain(fqdn)
+        hostname = os.getenv('HOSTNAME') or socket.gethostname()
+
+        name = f'{user}@{domain or hostname}'
+        return str(uuid.uuid3(uuid.NAMESPACE_DNS, name))
+    except OSError:
+        return str(uuid.uuid4())
 
 
 logger = _init_logger()
