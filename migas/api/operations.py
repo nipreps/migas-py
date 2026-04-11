@@ -26,28 +26,24 @@ class Operation:
     operation_type: str
     operation_name: str
     query_args: dict
-    selections: tuple | None = None  # TODO: Add subfield selection support
-    query: str = ''
-    fingerprint: bool = False
-    error_response: dict | None = None
+    selections: ty.Sequence[str] | None = None  # TODO: Add subfield selection support
 
     @classmethod
     def generate_query(cls, *args, **kwargs) -> str:
         parameters = _introspec(cls.generate_query, locals())
-        params = Config.populate() if cls.fingerprint else {}
-        params = {**params, **kwargs, **parameters}
+        params = {**kwargs, **parameters}
         query = cls._construct_query(params)
         return query
 
     @classmethod
     def _construct_query(cls, params: dict) -> str:
         """Construct the graphql query."""
-        query = _parse_format_params(params, cls.query_args)
-        cls.query = f'{cls.operation_type}{{{cls.operation_name}({query})'
+        query_params = _parse_format_params(params, cls.query_args)
+        query = f'{cls.operation_type}{{{cls.operation_name}({query_params})'
         if cls.selections:
-            cls.query += f'{{{",".join(f for f in cls.selections)}}}'
-        cls.query += '}'
-        return cls.query
+            query += f'{{{",".join(f for f in cls.selections)}}}'
+        query += '}'
+        return query
 
 
 @telemetry_enabled
