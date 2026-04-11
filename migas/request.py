@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import ssl
 import warnings
 from typing import Optional, Tuple, Union
 from http.client import HTTPConnection, HTTPResponse, HTTPSConnection
@@ -76,7 +77,11 @@ def _request(
         raise ValueError('URL scheme not supported')
 
     timeout = timeout or float(os.getenv('MIGAS_TIMEOUT', DEFAULT_TIMEOUT))
-    conn = Connection(purl.netloc, timeout=timeout)
+    if purl.scheme == 'https':
+        context = ssl.create_default_context()
+        conn = Connection(purl.netloc, timeout=timeout, context=context)
+    else:
+        conn = Connection(purl.netloc, timeout=timeout)
     headers = {
         'User-Agent': f'migas-client/{__version__}',
         'Accept-Encoding': 'gzip, deflate',
@@ -163,5 +168,5 @@ def _decompress_stream(stream: bytes, encoding: str) -> bytes:
 
         decomp = zlib.decompress(stream)
     else:
-        raise NotImplementedError(f'Cannot decode response with encoding "{encoding}>"')
+        raise NotImplementedError(f'Cannot decode response with encoding "{encoding}"')
     return decomp
