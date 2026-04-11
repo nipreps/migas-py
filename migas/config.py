@@ -4,7 +4,7 @@ import json
 import logging
 import os
 import socket
-import typing
+from collections.abc import Callable
 import uuid
 from dataclasses import dataclass, fields
 from functools import wraps
@@ -16,11 +16,10 @@ from .utils import compile_info
 DEFAULT_ENDPOINT = 'https://migas.nipreps.org'
 DEFAULT_CONFIG_FILE_FMT = str(Path(gettempdir()) / 'migas-{pid}.json').format
 
-# TODO: 3.10 - Replace with | operator
-File = typing.Union[str, Path]
+File = str | Path
 
 
-def _init_logger(level: typing.Optional[str] = None) -> logging.Logger:
+def _init_logger(level: str | None = None) -> logging.Logger:
     if level is None:
         level = os.getenv('MIGAS_LOG_LEVEL', logging.WARNING)
     logger = logging.getLogger('migas-py')
@@ -33,7 +32,7 @@ def _init_logger(level: typing.Optional[str] = None) -> logging.Logger:
     return logger
 
 
-def suppress_errors(func: typing.Callable) -> typing.Callable:
+def suppress_errors(func: Callable) -> Callable:
     """Decorator to silently fail the wrapped function"""
 
     @wraps(func)
@@ -46,7 +45,26 @@ def suppress_errors(func: typing.Callable) -> typing.Callable:
     return safe
 
 
-def telemetry_enabled(func: typing.Callable) -> typing.Callable:
+def _chmod600(filename: File) -> None:
+    """Enforce restricted permissions (0o600) on a file."""
+    with contextlib.suppress(OSError):
+        if (os.stat(filename).st_mode & 0o777) != 0o600:
+            os.chmod(filename, 0o600)
+
+
+def _secure_write(filename: File, content: str) -> None:
+    """Write content to a file with restricted permissions (0o600)."""
+    Path(filename).parent.mkdir(parents=True, exist_ok=True)
+    flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
+    flags |= getattr(os, 'O_NOFOLLOW', 0)
+
+    fd = os.open(filename, flags, 0o600)
+    with os.fdopen(fd, 'w') as f:
+        f.write(content)
+    os.chmod(filename, 0o600)
+
+
+def telemetry_enabled(func: Callable) -> Callable:
     """Decorator function to verify telemetry collection is enabled."""
 
     @wraps(func)
@@ -154,11 +172,9 @@ class Config:
         config = {
             field: getattr(cls, field)
             for field in cls.__annotations__.keys()
-            if field not in ('_is_setup', '_file')
+            if field not in ('_is_setup', '_file', '_pid')
         }
-        # TODO: Make safe when multiprocessing
-        Path(filename).parent.mkdir(parents=True, exist_ok=True)
-        Path(filename).write_text(json.dumps(config))
+        _secure_write(filename, json.dumps(config))
         cls._file = filename
 
     @classmethod
@@ -190,20 +206,17 @@ def setup(
 
     If `user_id` is not provided, one will be generated.
     """
+    loaded = False
     if filename is not None:
-        _try_load(filename)
+        loaded = _try_load(filename)
     else:
-        # check for existing configuration files
-        # first current PID, and if not then parent PID
-        # if exists and loads, setup is complete
-        (
-            _try_load(DEFAULT_CONFIG_FILE_FMT(pid=os.getpid()))
-            or _try_load(DEFAULT_CONFIG_FILE_FMT(pid=os.getppid()))
-        )
+        # check for existing configuration files (current PID, then parent PID)
+        loaded = _try_load(DEFAULT_CONFIG_FILE_FMT(pid=os.getpid()))
+        if not loaded:
+            loaded = _try_load(DEFAULT_CONFIG_FILE_FMT(pid=os.getppid()))
 
-    # if the PID loaded is this process's parent PID, just use the loaded config
-    if Config._pid != os.getppid():
-        # collect system information and initialize config
+    # If nothing was loaded, or if explicit overrides are provided, initialize/update Config
+    if not loaded or any(x is not None for x in (endpoint, user_id, session_id)):
         info = compile_info()
         Config.init(
             endpoint=endpoint,
@@ -243,10 +256,11 @@ def clear_user_id() -> None:
 
 
 def _try_load(filename) -> bool:
-    if Path(filename).exists():
-        # load and use
-        return Config.load(filename)
-    return False
+    """Attempt to load a configuration file. Returns True if successful."""
+    try:
+        return Config.load(filename) is True
+    except (FileNotFoundError, IsADirectoryError):
+        return False
 
 
 def gen_uuid(uuid_factory: str = 'safe', container: str | None = None) -> str | None:
@@ -311,6 +325,7 @@ def _safe_uuid_factory() -> str | None:
     # 1. Try loading config file
     if user_id_file and user_id_file.is_file():
         with contextlib.suppress(OSError, ValueError):
+            _chmod600(user_id_file)
             user_id = user_id_file.read_text().strip()
             uuid.UUID(user_id)  # validate
             return user_id
@@ -321,8 +336,7 @@ def _safe_uuid_factory() -> str | None:
     # 3. Try to preserve user id
     if user_id_file:
         with contextlib.suppress(OSError):
-            user_id_file.parent.mkdir(parents=True, exist_ok=True)
-            user_id_file.write_text(user_id)
+            _secure_write(user_id_file, user_id)
 
     return user_id
 

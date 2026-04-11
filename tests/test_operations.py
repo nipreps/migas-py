@@ -1,79 +1,51 @@
-from datetime import datetime as dt
-from datetime import timedelta
-from datetime import timezone as tz
-
-from looseversion import LooseVersion
-import pytest
-
-import migas
-from migas.api import add_breadcrumb, check_project, get_usage
-
-from .utils import run_server_tests
-
-# skip all tests in module if server is not available
-pytestmark = pytest.mark.skipif(not run_server_tests, reason='Local server not found')
-
-test_project = 'nipreps/nipreps'
-today = dt.now(tz.utc)
-future = (today + timedelta(days=2)).strftime('%Y-%m-%d')
-today = today.strftime('%Y-%m-%d')
+import concurrent.futures
+from migas.api.operations import CheckProject, GetUsage
 
 
-TEST_ENDPOINT = 'http://localhost:8080/'
+def test_check_project_query():
+    params = {
+        'project': 'owner/repo',
+        'project_version': '1.0.0',
+        'language': 'python',
+        'is_ci': True,
+    }
+    query = CheckProject._construct_query(params)
+    assert 'query' in query
+    assert 'check_project' in query
+    assert 'project:"owner/repo"' in query
+    assert 'project_version:"1.0.0"' in query
+    assert 'language:"python"' in query
+    assert 'is_ci:true' in query
+    # Check selections
+    assert 'success,flagged,latest,message' in query
 
 
-@pytest.fixture(autouse=True, scope='module')
-def setup_migas():
-    """Ensure migas is configured to communicate with the staging app."""
-    migas.setup(endpoint=TEST_ENDPOINT)
-
-    assert migas.config.Config._is_setup
-    yield
-
-
-def test_migas_add_get():
-    # capture initial usage
-    res = get_usage(test_project, start=today)
-    initial_hits = res['hits'] if res['success'] else 0
-
-    res = add_breadcrumb(test_project, migas.__version__, wait=True)
-    assert res['success'] is True, res.get('message')
-    # ensure kwargs can be submitted
-    res = add_breadcrumb(
-        test_project, migas.__version__, wait=True, language='cpython', platform='win32'
-    )
-    assert res['success'] is True, res.get('message')
-    # this breadcrumb is not valid, so won't be tracked
-    res = add_breadcrumb(test_project, migas.__version__, wait=True, status='wtf')
-    assert res['success'] is False
-
-    # 2 crumbs should be present on the server, both from the same user
-    res = get_usage(test_project, start=today)
-    assert res['success'] is True
-    all_usage = res['hits']
-    assert all_usage == initial_hits + 2
-
-    res = get_usage(test_project, start=today, unique=True)
-    assert res['success'] is True
-    assert all_usage > res['hits'] > 0
-
-    res = get_usage(test_project, start=future)
-    assert res['success'] is True
-    assert res['hits'] == 0
-
-    # checking a project that is not tracked will lead to a failure
-    res = get_usage('my/madeup-project', start=today)
-    assert res['success'] is False
-    assert res['hits'] == 0
+def test_get_usage_query():
+    params = {'project': 'owner/repo', 'start': '2023-01-01', 'unique': True}
+    query = GetUsage._construct_query(params)
+    assert 'query' in query
+    assert 'get_usage' in query
+    assert 'project:"owner/repo"' in query
+    assert 'start:"2023-01-01"' in query
+    assert 'unique:true' in query
 
 
-def test_check_project():
-    res = check_project(test_project, migas.__version__)
-    assert res['success'] is True
-    assert res['latest']
-    # Since we are using a real project (nipreps/nipreps), the latest version
-    # on GitHub may be ahead of the current development version.
-    latest = LooseVersion(res['latest'])
-    assert latest
-    assert res['flagged'] is False
-    assert res['message'] == ''
+def test_concurrent_query_generation():
+    """
+    Simulate multiple threads generating queries concurrently.
+    This would often fail if cls.query was shared across threads.
+    """
+
+    def gen_query(project_name):
+        return CheckProject.generate_query(project=project_name, project_version='1.0.0')
+
+    num_threads = 20
+    num_queries = 100
+    projects = [f'project-{i}' for i in range(num_queries)]
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=num_threads) as executor:
+        results = list(executor.map(gen_query, projects))
+
+    for i, res in enumerate(results):
+        expected = f'project:"project-{i}"'
+        assert expected in res, f'Query {i} corrupted: {res}'

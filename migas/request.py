@@ -4,15 +4,15 @@ from __future__ import annotations
 
 import json
 import os
+import ssl
 import warnings
-from typing import Optional, Tuple, Union
 from http.client import HTTPConnection, HTTPResponse, HTTPSConnection
 from urllib.parse import urlparse
 from concurrent.futures import ThreadPoolExecutor
 
 from . import __version__
 
-MigasResponse = Tuple[int, Union[dict, str]]  # status code, body
+MigasResponse = tuple[int, dict | str]  # status code, body
 
 DEFAULT_TIMEOUT = 3
 TIMEOUT_RESPONSE = (
@@ -25,10 +25,10 @@ UNAVAIL_RESPONSE = (503, {'data': None, 'errors': [{'message': 'Could not connec
 def request(
     url: str,
     *,
-    query: str = None,
-    path: str = None,
-    json_data: dict = None,
-    timeout: float = None,
+    query: str | None = None,
+    path: str | None = None,
+    json_data: dict | None = None,
+    timeout: float | None = None,
     method: str = 'POST',
     chunk_size: int | None = None,
     wait: bool = False,
@@ -58,25 +58,27 @@ def request(
 def _request(
     url: str,
     *,
-    query: str = None,
-    path: str = None,
-    json_data: dict = None,
-    timeout: float = None,
+    query: str | None = None,
+    path: str | None = None,
+    json_data: dict | None = None,
+    timeout: float | None = None,
     method: str = 'POST',
-    chunk_size: int = None,
+    chunk_size: int | None = None,
     wait: bool = False,
 ) -> MigasResponse:
-    purl = urlparse(url)
-    # TODO: 3.10 - Replace with match/case
-    if purl.scheme == 'https':
-        Connection = HTTPSConnection
-    elif purl.scheme == 'http':
-        Connection = HTTPConnection
-    else:
-        raise ValueError('URL scheme not supported')
 
+    purl = urlparse(url)
     timeout = timeout or float(os.getenv('MIGAS_TIMEOUT', DEFAULT_TIMEOUT))
-    conn = Connection(purl.netloc, timeout=timeout)
+    match purl.scheme:
+        case 'https':
+            conn = HTTPSConnection(
+                purl.netloc, timeout=timeout, context=ssl.create_default_context()
+            )
+        case 'http':
+            conn = HTTPConnection(purl.netloc, timeout=timeout)
+        case _:
+            raise ValueError('URL scheme not supported')
+
     headers = {
         'User-Agent': f'migas-client/{__version__}',
         'Accept-Encoding': 'gzip, deflate',
@@ -107,16 +109,8 @@ def _request(
         body = _read_response(response, encoding, chunk_size)
     except TimeoutError:
         return TIMEOUT_RESPONSE
-    except ConnectionError:
+    except (ConnectionError, OSError):
         return UNAVAIL_RESPONSE
-    except OSError as e:
-        # Python < 3.10, this could be socket.timeout or socket.gaierror
-        import socket
-
-        if isinstance(e, socket.timeout):
-            return TIMEOUT_RESPONSE
-        else:
-            return UNAVAIL_RESPONSE
     finally:
         conn.close()
 
@@ -129,7 +123,7 @@ def _request(
 
 
 def _read_response(
-    response: HTTPResponse, encoding: Optional[str] = None, chunk_size: Optional[int] = None
+    response: HTTPResponse, encoding: str | None = None, chunk_size: int | None = None
 ) -> str:
     """
     Read and aggregate the response body.
@@ -137,11 +131,7 @@ def _read_response(
     If `chunk_size` is `None`, the entire response is read at once.
     """
     stream = b''
-    # TODO: 3.8 - Replace with walrus
-    # while chunk := response.read(chunk_size):
-    chunk = 1
-    while chunk:
-        chunk = response.read(chunk_size)
+    while chunk := response.read(chunk_size):
         stream += chunk
 
     if encoding:
@@ -150,18 +140,15 @@ def _read_response(
 
 
 def _decompress_stream(stream: bytes, encoding: str) -> bytes:
-    """
-    Decompress the compressed response byte stream.
-    """
-    # TODO: 3.10 - replace with match
-    if encoding == 'gzip':
-        import gzip
+    """Decompress the compressed response byte stream."""
+    match encoding:
+        case 'gzip':
+            import gzip
 
-        decomp = gzip.decompress(stream)
-    elif encoding == 'deflate':
-        import zlib
+            return gzip.decompress(stream)
+        case 'deflate':
+            import zlib
 
-        decomp = zlib.decompress(stream)
-    else:
-        raise NotImplementedError(f'Cannot decode response with encoding "{encoding}>"')
-    return decomp
+            return zlib.decompress(stream)
+        case _:
+            raise NotImplementedError(f'Cannot decode response with encoding "{encoding}"')
