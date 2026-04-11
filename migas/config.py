@@ -46,6 +46,25 @@ def suppress_errors(func: typing.Callable) -> typing.Callable:
     return safe
 
 
+def _chmod600(filename: File) -> None:
+    """Enforce restricted permissions (0o600) on a file."""
+    with contextlib.suppress(OSError):
+        if (os.stat(filename).st_mode & 0o777) != 0o600:
+            os.chmod(filename, 0o600)
+
+
+def _secure_write(filename: File, content: str) -> None:
+    """Write content to a file with restricted permissions (0o600)."""
+    Path(filename).parent.mkdir(parents=True, exist_ok=True)
+    flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
+    flags |= getattr(os, 'O_NOFOLLOW', 0)
+
+    fd = os.open(filename, flags, 0o600)
+    with os.fdopen(fd, 'w') as f:
+        f.write(content)
+    os.chmod(filename, 0o600)
+
+
 def telemetry_enabled(func: typing.Callable) -> typing.Callable:
     """Decorator function to verify telemetry collection is enabled."""
 
@@ -157,8 +176,7 @@ class Config:
             if field not in ('_is_setup', '_file')
         }
         # TODO: Make safe when multiprocessing
-        Path(filename).parent.mkdir(parents=True, exist_ok=True)
-        Path(filename).write_text(json.dumps(config))
+        _secure_write(filename, json.dumps(config))
         cls._file = filename
 
     @classmethod
@@ -311,6 +329,7 @@ def _safe_uuid_factory() -> str | None:
     # 1. Try loading config file
     if user_id_file and user_id_file.is_file():
         with contextlib.suppress(OSError, ValueError):
+            _chmod600(user_id_file)
             user_id = user_id_file.read_text().strip()
             uuid.UUID(user_id)  # validate
             return user_id
@@ -321,8 +340,7 @@ def _safe_uuid_factory() -> str | None:
     # 3. Try to preserve user id
     if user_id_file:
         with contextlib.suppress(OSError):
-            user_id_file.parent.mkdir(parents=True, exist_ok=True)
-            user_id_file.write_text(user_id)
+            _secure_write(user_id_file, user_id)
 
     return user_id
 
