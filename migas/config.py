@@ -4,7 +4,7 @@ import json
 import logging
 import os
 import socket
-import typing
+from collections.abc import Callable
 import uuid
 from dataclasses import dataclass, fields
 from functools import wraps
@@ -16,11 +16,10 @@ from .utils import compile_info
 DEFAULT_ENDPOINT = 'https://migas.nipreps.org'
 DEFAULT_CONFIG_FILE_FMT = str(Path(gettempdir()) / 'migas-{pid}.json').format
 
-# TODO: 3.10 - Replace with | operator
-File = typing.Union[str, Path]
+File = str | Path
 
 
-def _init_logger(level: typing.Optional[str] = None) -> logging.Logger:
+def _init_logger(level: str | None = None) -> logging.Logger:
     if level is None:
         level = os.getenv('MIGAS_LOG_LEVEL', logging.WARNING)
     logger = logging.getLogger('migas-py')
@@ -33,7 +32,7 @@ def _init_logger(level: typing.Optional[str] = None) -> logging.Logger:
     return logger
 
 
-def suppress_errors(func: typing.Callable) -> typing.Callable:
+def suppress_errors(func: Callable) -> Callable:
     """Decorator to silently fail the wrapped function"""
 
     @wraps(func)
@@ -65,7 +64,7 @@ def _secure_write(filename: File, content: str) -> None:
     os.chmod(filename, 0o600)
 
 
-def telemetry_enabled(func: typing.Callable) -> typing.Callable:
+def telemetry_enabled(func: Callable) -> Callable:
     """Decorator function to verify telemetry collection is enabled."""
 
     @wraps(func)
@@ -175,7 +174,6 @@ class Config:
             for field in cls.__annotations__.keys()
             if field not in ('_is_setup', '_file', '_pid')
         }
-        # TODO: Make safe when multiprocessing
         _secure_write(filename, json.dumps(config))
         cls._file = filename
 
