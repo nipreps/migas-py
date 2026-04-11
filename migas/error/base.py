@@ -70,7 +70,11 @@ def status_from_signal(signum: int) -> dict:
 
 
 def strip_filenames(text: str) -> str:
-    paths = set(re.findall(r'(?:/[^/]+)[/\w\.-]*', text))
-    for path in paths:
-        text = text.replace(path, '<redacted>')
+    """Redact file paths from the provided text."""
+    # 1. Relative paths (e.g., ./path/to/file) - do these first to avoid collisions
+    text = re.sub(r'(?:\.\/|~\/)[/\w\.-]+', '<redacted>', text)
+    # 2. Windows absolute paths
+    text = re.sub(r'(?:[A-Z]:\\[^\\]+)[\\\w\.-]*', '<redacted>', text)
+    # 3. Unix absolute paths
+    text = re.sub(r'(?:/[^/]+)[/\w\.-]*', '<redacted>', text)
     return text
