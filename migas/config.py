@@ -208,20 +208,17 @@ def setup(
 
     If `user_id` is not provided, one will be generated.
     """
+    loaded = False
     if filename is not None:
-        _try_load(filename)
+        loaded = _try_load(filename)
     else:
-        # check for existing configuration files
-        # first current PID, and if not then parent PID
-        # if exists and loads, setup is complete
-        (
-            _try_load(DEFAULT_CONFIG_FILE_FMT(pid=os.getpid()))
-            or _try_load(DEFAULT_CONFIG_FILE_FMT(pid=os.getppid()))
-        )
+        # check for existing configuration files (current PID, then parent PID)
+        loaded = _try_load(DEFAULT_CONFIG_FILE_FMT(pid=os.getpid()))
+        if not loaded:
+            loaded = _try_load(DEFAULT_CONFIG_FILE_FMT(pid=os.getppid()))
 
-    # if the PID loaded is this process's parent PID, just use the loaded config
-    if Config._pid != os.getppid():
-        # collect system information and initialize config
+    # If nothing was loaded, or if explicit overrides are provided, initialize/update Config
+    if not loaded or any(x is not None for x in (endpoint, user_id, session_id)):
         info = compile_info()
         Config.init(
             endpoint=endpoint,
