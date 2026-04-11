@@ -261,10 +261,11 @@ def clear_user_id() -> None:
 
 
 def _try_load(filename) -> bool:
-    if Path(filename).exists():
-        # load and use
-        return Config.load(filename)
-    return False
+    """Attempt to load a configuration file. Returns True if successful."""
+    try:
+        return Config.load(filename) is True
+    except (FileNotFoundError, IsADirectoryError):
+        return False
 
 
 def gen_uuid(uuid_factory: str = 'safe', container: str | None = None) -> str | None:
