@@ -173,7 +173,7 @@ class Config:
         config = {
             field: getattr(cls, field)
             for field in cls.__annotations__.keys()
-            if field not in ('_is_setup', '_file')
+            if field not in ('_is_setup', '_file', '_pid')
         }
         # TODO: Make safe when multiprocessing
         _secure_write(filename, json.dumps(config))
