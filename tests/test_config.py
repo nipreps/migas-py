@@ -63,7 +63,9 @@ import migas
 migas.setup()
 migas.print_config()
 """
-    proc = sp.run(['python'], input=code, capture_output=True, encoding='UTF-8')
+    import sys
+
+    proc = sp.run([sys.executable], input=code, capture_output=True, encoding='UTF-8')
     child_config = proc.stdout.strip()
     print(child_config)
     assert 'abcdef' in child_config
