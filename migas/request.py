@@ -96,7 +96,7 @@ def _request(
 
     request_path = purl.path
     if path:
-        request_path = os.path.join(request_path, path.lstrip('/'))
+        request_path = f'{request_path.rstrip("/")}/{path.lstrip("/")}'
 
     if wait and not query:
         sep = '&' if '?' in request_path else '?'
